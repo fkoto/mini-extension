@@ -13,6 +13,53 @@
 #include "protofix.h"
 #endif
 
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!MY STRUCTS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+typedef struct contig{
+	char name[100];
+	struct contig *next;
+}contiguous;
+
+contiguous *start;
+contiguous *end = NULL;
+
+void insert_contig(char *name){
+	contiguous *temp = (contiguous*) malloc(sizeof(contiguous));
+	strcpy(temp->name, name);
+	temp->next = NULL;
+	if (end == NULL){
+		start = temp;
+		end = temp;
+	}
+	else{
+		end->next = temp;
+		end = temp;
+	}
+}
+
+void delete_contig_list(){
+	contiguous *temp = start;
+	contiguous *temp2;
+
+	while(temp != NULL){
+		temp2 = temp;
+		temp = temp->next;
+		free(temp2);
+	}
+}
+
+int find_contig(char *name){
+	contiguous *temp = start;
+
+	while(temp != NULL){
+		if (strcmp(temp->name, name)){
+			return 1;
+		}
+		temp = temp->next;
+	}
+	return 0;
+}
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!MY STRUCTS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 struct stat st = {0};
 int MINI_Trace_hasBeenInit = 0;
 int MINI_Trace_hasBeenFinished = 0;     
@@ -62,7 +109,13 @@ int encode_datatype(const char *dat) {
        if(strcmp("MPI_BYTE",dat)==0) {
            res=6;
         }
-
+	
+	if(find_contig((char *) dat)){
+		res = 100;
+	}
+	else{
+		res = 101;
+	}
      
 	return res;
 }
@@ -902,6 +955,8 @@ int  MPI_Finalize(  )
 
   MINI_Trace_hasBeenFinished = 1;  
   returnVal = PMPI_Finalize(  );
+	//deallocating resources
+	delete_contig_list();
   return returnVal;
 }
 
@@ -1394,6 +1449,31 @@ MPI_Comm *newcomm;
 	returnVal = PMPI_Comm_create(comm, group, newcomm);
 
 	bcount = bcount + 1;
+	PAPI_accum_counters(values,1);
+	ins1 = values[0];
+	if (en_time==1) start_time=PAPI_get_real_usec();
+
+	return returnVal;
+
+}
+int MPI_Type_contiguous(count, oldtype, newtype)
+int count;
+MPI_Datatype oldtype;
+MPI_Datatype *newtype;{
+	int returnVal;
+  	char nam[MPI_MAX_OBJECT_NAME];
+	int np;
+
+
+  	if(en_time==1) end_time=PAPI_get_real_usec();
+  	if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	ins2 = values[0];
+
+	returnVal = PMPI_Type_contiguous(count, oldtype, newtype);
+
+  	MPI_Type_get_name(*newtype,nam,&np);
+	insert_contig(nam);
+	
 	PAPI_accum_counters(values,1);
 	ins1 = values[0];
 	if (en_time==1) start_time=PAPI_get_real_usec();
