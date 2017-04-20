@@ -447,9 +447,10 @@ MPI_Comm comm;
   int   returnVal;
   int llrank;
   char msg[300];
-  int i,max_recv=0,max_recv_displ=0,s_buffer=0;
+  int i,max_recv=0,min_recv=0, median_recv=0, size,err,resultlen,s_buffer=0;
   int np,np2;
   char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
 
   if(en_time==1) end_time=PAPI_get_real_usec();
 
@@ -459,7 +460,9 @@ MPI_Comm comm;
   np=encode_datatype((const char*)&nam);
   MPI_Type_get_name(recvtype,nam,&np2);
   np2=encode_datatype((const char*)&nam);
-
+	
+	err = MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
   ins2=values[0];
   if (bcount>buff )
@@ -476,17 +479,34 @@ MPI_Comm comm;
 
 
   strcat(longmsg,msg);
+	
+	size = sizeof(recvcnts)/sizeof(recvcnts[0]);
+	max_recv = max((int*)recvcnts, size);
+	min_recv = min((int*)recvcnts, size);
+	median_recv = median((int*)recvcnts, size);
 /*
   for(i=0;i<global;i++) {	//not used!!!!!!!!
     if (recvcnts[i]>max_recv) max_recv=recvcnts[i];
     if (displs[i]>max_recv_displ) max_recv_displ=displs[i];
   }
 */
+	if (llrank == root){
+		sprintf(msg, "%d Gatherv(root) receiving min=%d,median=%d,max=%d", 
+			llrank,min_recv,median_recv,max_recv);
+	}
+	else{
+		sprintf(msg, "%d Gatherv sending %d",
+			llrank,sendcnts);
+	}
+	strcat(longmsg,msg);
+/*
+	sprintf(msg, "%d GatherV %d")
   sprintf(msg, "%d GatherV %d ",
            llrank,s_buffer );
 
   strcat(longmsg,msg);
-
+*/
+/*
   for (i=0;i<global;i++) {
    sprintf(msg,"%d ",recvcnts[i]);
    strcat(longmsg,msg);
@@ -497,14 +517,32 @@ MPI_Comm comm;
    strcat(longmsg,msg);
 
   }
-
+*/
+/*
   if(np>0 || np2>0) {
         sprintf(msg,"%d %d\n",np,np2);
   }
   else strcat(longmsg,"\n");
   strcat(longmsg,msg);
+*/
+	if (np != np2){
+		sprintf(msg, " sendtype %d, recvtype %d",np,np2);
+	}
+	else{
+		sprintf(msg, " type %d", np);
+	}
+	strcat (longmsg,msg);
 
-  bcount=bcount+2;
+	if (err == 0){//MPI_SUCCESS
+	sprintf(msg, " on comm %s\n", nam_comm);
+	}
+	else{
+		sprintf(msg, "\n");
+	}	
+	strcat (longmsg,msg);
+
+//  bcount=bcount+2;
+	bcount = bcount + 4;//?????????
 
   returnVal = PMPI_Gatherv( sendbuf, sendcnts, sendtype, recvbuf, recvcnts,
                             displs, recvtype, root, comm );
