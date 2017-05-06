@@ -15,161 +15,11 @@
 
 //#define PAPI	//run with PAPI enabled
 
+void papi_get_start_measurement();
+void papi_get_end_measurement();
+void papi_print_compute(char msg[], int llrank);
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!MY STRUCTS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-int serial = 0;	//used to store new contig types
-typedef struct contig{
-	char name[100];
-	struct contig *next;
-}contiguous;
-
-contiguous *start;
-contiguous *end = NULL;
-
-void insert_contig(char *name){
-	contiguous *temp = (contiguous*) malloc(sizeof(contiguous));
-	strcpy(temp->name, name);
-	temp->next = NULL;
-	if (end == NULL){
-		start = temp;
-		end = temp;
-	}
-	else{
-		end->next = temp;
-		end = temp;
-	}
-	printf("Inserted contig with name %s\n", name);
-}
-
-void delete_contig_list(){
-	contiguous *temp = start;
-	contiguous *temp2;
-
-	while(temp != NULL){
-		temp2 = temp;
-		temp = temp->next;
-		free(temp2);
-	}
-}
-
-int find_contig(char *name){
-	contiguous *temp = start;
-	printf("Searching for contig %s\n",name);
-
-	while(temp != NULL){
-		if (strcmp(temp->name, name)){
-			return 1;
-		}
-		temp = temp->next;
-	}
-	return 0;
-}
-
-void merge(int *arr, int l1, int h1, int l2, int h2){
-	int *temp;
-	int length = (h1 - l1) + (h2 - l2) + 2;
-
-	temp = (int*) malloc(length * sizeof(int));	//allocate temp buffer
-
-	int iter1, iter2, iter_t, i;
-
-	iter1 = l1;	//set iterators
-	iter2 = l2;
-	iter_t = 0;
-	
-	while((iter1 <= h1) && (iter2 <= h2)){	//while both subarrays have values, compare and merge
-		if (arr[iter1] <= arr[iter2]){
-			temp[iter_t] = arr[iter1];
-			iter1++;
-		}
-		else{
-			temp[iter_t] = arr[iter2];
-			iter2++;
-		}
-		iter_t++;
-	}
-
-	if (iter1 > h1){	//complete with rest elements
-		for (i = iter2; i <= h2; i++){
-			temp[iter_t] = arr[i];
-			iter_t++;
-		}
-	}
-	else{
-		for(i = iter1; i <= h1; i++){
-			temp[iter_t] = arr[i];
-			iter_t++;
-		}
-	}
-	
-	iter_t = 0;
-	for (i = l1; i <= h2; i++){	//copy back from temp buffer
-		arr[i] = temp[iter_t];
-		iter_t++;
-	}
-
-	free(temp);
-}
-
-void mergesort(int *arr, int low, int high){
-
-	int mid;
-	if (low < high){
-		mid = (low + high)/2;
-		mergesort(arr, low, mid);	//split
-		mergesort(arr, mid+1, high);
-		merge(arr, low, mid, mid+1, high);	//merge
-	}
-}
-
-int max(int *arr, int size){
-	int result = arr[0];
-	int i;
-
-	for(i = 1; i < size; i++){
-		if(arr[i] > result){
-			result = arr[i];
-		}
-	}
-
-	return result;
-}
-
-int min(int *arr, int size){
-	int result = arr[0];
-	int i;
-
-	for(i = 1; i < size; i++){
-		if(arr[i] < result){
-			result = arr[i];
-		}
-	}
-
-	return result;
-}
-
-float median(int *arr, int size){
-	float result;
-	int i;
-	int* temp = (int*) malloc(size * sizeof(int));
-	
-	for(i = 0; i < size; i++){
-		temp[i] = arr[i];
-	}
-
-	mergesort(temp, 0 ,size - 1);
-
-	if ((size % 2) == 0){
-		result = (temp[size/2] + temp[size/2 - 1]) / 2;
-	}
-	else{
-		result = temp[size/2] * 1.0;
-	}
-
-	free(temp);
-
-	return result;
-}
-
+#include "utils.c"
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!MY STRUCTS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 struct stat st = {0};
@@ -196,7 +46,7 @@ if ( (MINI_Trace_hasBeenInit) && (!MINI_Trace_hasBeenFinished) ) {\
  * return values >100 represent non contiguous datatypes (for now only 101).
 **/
 int encode_datatype(const char *dat) {
-	printf("encode datatype started with %s", dat);
+//	printf("encode datatype started with %s\n", dat);
 	int res=-1;
        if(strcmp("MPI_DOUBLE_PRECISION",dat)==0 || strcmp("MPI_DOUBLE",dat)==0) {
            res=0;
@@ -225,7 +75,7 @@ int encode_datatype(const char *dat) {
 	else{
 		res = 101;
 	}
-    	printf(", returning: %d\n",res); 
+//	printf(", returning: %d\n",res); 
 	return res;
 }
 
@@ -245,23 +95,16 @@ MPI_Comm comm;
   int np;
   char nam[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
+	papi_get_start_measurement();
 #endif
 
   MPI_Type_get_name(datatype,nam,&np);
 
   np=encode_datatype((const char*)&nam);
 
-#ifdef PAPI
- if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-#endif
-
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+	papi_print_compute(msg, llrank);
 #endif
 
   if (bcount>buff )
@@ -271,9 +114,7 @@ MPI_Comm comm;
    bcount=0;
   }
 #ifdef PAPI
-  ins2=values[0];
-
-  strcat(longmsg,msg);
+	strcat(longmsg,msg);
 #endif
   sprintf(msg, "%d comm_size %d\n",llrank,global);
   strcat(longmsg,msg);
@@ -301,9 +142,7 @@ MPI_Comm comm;
 #endif
   strcat(longmsg,msg);
 #ifdef PAPI
- PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -325,9 +164,7 @@ MPI_Comm comm;
   char nam[MPI_MAX_OBJECT_NAME];
 
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 
@@ -337,8 +174,6 @@ MPI_Comm comm;
          sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
   }
   else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
-  ins2=values[0];
 #endif
   MPI_Type_get_name(sendtype,nam,&np);
   np=encode_datatype((const char*)&nam);
@@ -374,9 +209,7 @@ MPI_Comm comm;
   bcount=bcount+2;
 
 #ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -398,8 +231,7 @@ MPI_Comm comm;
   char msg[300];
   char nam[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+ 	papi_get_start_measurement();
 #endif
   MPI_Type_get_name(sendtype,nam,&np);
   np=encode_datatype((const char*)&nam);
@@ -413,8 +245,6 @@ MPI_Comm comm;
          sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
   }
   else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
-  ins2=values[0];
 #endif
   if (bcount>buff )
   {
@@ -442,15 +272,11 @@ MPI_Comm comm;
   returnVal = PMPI_Alltoall( sendbuf, sendcount, sendtype, recvbuf, recvcnt, 
 			     recvtype, comm );
 #ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
 
-
-//!!!!!!!!!!!!!!!!!!!!!!!!TO BE EXTENDED WITH SIZE OF STRUCTS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 int   MPI_Gatherv( sendbuf, sendcnts, sendtype, recvbuf, recvcnts, displs, recvtype, root, comm )
 const void * sendbuf;
 int sendcnts;
@@ -465,14 +291,13 @@ MPI_Comm comm;
   int   returnVal;
   int llrank;
   char msg[300];
-  int i,max_recv=0,min_recv=0, median_recv=0, size,err,resultlen,s_buffer=0;
+  int max_recv=0,min_recv=0, size,err,resultlen;//,i,s_buffer=0; //unused
+  float median_recv = 0.0;
   int np,np2;
   char nam[MPI_MAX_OBJECT_NAME];
 	char nam_comm[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   MPI_Type_get_name(sendtype,nam,&np);
   np=encode_datatype((const char*)&nam);
@@ -482,9 +307,7 @@ MPI_Comm comm;
 	err = MPI_Comm_get_name(comm, nam_comm, &resultlen);
 	
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp,"%s", longmsg);
@@ -492,24 +315,16 @@ MPI_Comm comm;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
 	size = sizeof(recvcnts)/sizeof(recvcnts[0]);
 	max_recv = max((int*)recvcnts, size);
 	min_recv = min((int*)recvcnts, size);
 	median_recv = median((int*)recvcnts, size);
-/*
-  for(i=0;i<global;i++) {	//not used!!!!!!!!
-    if (recvcnts[i]>max_recv) max_recv=recvcnts[i];
-    if (displs[i]>max_recv_displ) max_recv_displ=displs[i];
-  }
-*/
+
 	if (llrank == root){
-		sprintf(msg, "%d Gatherv(root) receiving min=%d,median=%d,max=%d", 
+		sprintf(msg, "%d Gatherv(root) receiving min=%d,median=%f,max=%d", 
 			llrank,min_recv,median_recv,max_recv);
 	}
 	else{
@@ -517,32 +332,7 @@ MPI_Comm comm;
 			llrank,sendcnts);
 	}
 	strcat(longmsg,msg);
-/*
-	sprintf(msg, "%d GatherV %d")
-  sprintf(msg, "%d GatherV %d ",
-           llrank,s_buffer );
 
-  strcat(longmsg,msg);
-*/
-/*
-  for (i=0;i<global;i++) {
-   sprintf(msg,"%d ",recvcnts[i]);
-   strcat(longmsg,msg);
-  }
-  for (i=0;i<global;i++) {
-
-   sprintf(msg,"%d ",displs[i]);
-   strcat(longmsg,msg);
-
-  }
-*/
-/*
-  if(np>0 || np2>0) {
-        sprintf(msg,"%d %d\n",np,np2);
-  }
-  else strcat(longmsg,"\n");
-  strcat(longmsg,msg);
-*/
 	if (np != np2){
 		sprintf(msg, " sendtype %d, recvtype %d",np,np2);
 	}
@@ -560,15 +350,12 @@ MPI_Comm comm;
 	strcat (longmsg,msg);
 
 //  bcount=bcount+2;
-	bcount = bcount + 4;//?????????
+	bcount = bcount + 3;//?????????
 
   returnVal = PMPI_Gatherv( sendbuf, sendcnts, sendtype, recvbuf, recvcnts,
                             displs, recvtype, root, comm );
 #ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
-
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -585,12 +372,11 @@ MPI_Comm comm;
   int   returnVal;
   int llrank;
   char msg[300];
-  int i;
+  //int i;//unused
   int np,np2;
   char nam[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+ 	papi_get_start_measurement();
 #endif
   MPI_Type_get_name(sendtype,nam,&np);
   np=encode_datatype((const char*)&nam);
@@ -599,9 +385,7 @@ MPI_Comm comm;
 
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -609,11 +393,7 @@ MPI_Comm comm;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
+ 	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
 	int ssize, rsize;
@@ -635,10 +415,7 @@ MPI_Comm comm;
   returnVal = PMPI_Allgather( sendbuf, sendcnts, sendtype, recvbuf,
                                recvcnts, recvtype, comm );
 #ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
-
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -657,13 +434,18 @@ MPI_Comm comm;
   int   returnVal;
   int llrank;
   char msg[300];
-  int i,max_send=0,max_send_displ=0,max_recv=0,max_recv_displ=0,s_buffer=0,r_buffer=0;
+  int max_recv=0,min_recv=0,size=0, err, resultlen;//,s_buffer=0,r_buffer=0,i; //unused
+  float median_recv=0.0;
+  max_recv=0,min_recv=0, median_recv=0;
   int np,np2;
   char nam[MPI_MAX_OBJECT_NAME];
+  char nam_comm[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+ 	papi_get_start_measurement();
 #endif
+
+		err = MPI_Comm_get_name(comm, nam_comm, &resultlen);
+
   MPI_Type_get_name(sendtype,nam,&np);
   np=encode_datatype((const char*)&nam);
   MPI_Type_get_name(recvtype,nam,&np2);
@@ -671,9 +453,7 @@ MPI_Comm comm;
 
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -681,51 +461,43 @@ MPI_Comm comm;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
+ 	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
-  for(i=0;i<global;i++) {
-    if (recvcnts[i]>max_recv) max_recv=recvcnts[i];
-    if (displs[i]>max_send_displ) max_send_displ=displs[i];
-  }
-  s_buffer=max_send+max_send_displ;
-  r_buffer=max_recv+max_recv_displ;
-  sprintf(msg, "%d allGatherV %d ",
-           llrank,sendcnts );
 
-  strcat(longmsg,msg);
+	size = sizeof(recvcnts)/sizeof(recvcnts[0]);
+	max_recv = max((int*)recvcnts, size);
+	min_recv = min((int*)recvcnts, size);
+	median_recv = median((int*)recvcnts, size);
 
-  for (i=0;i<global;i++) {
-   sprintf(msg,"%d ",recvcnts[i]);
-   strcat(longmsg,msg);
-  }
-  for (i=0;i<global;i++) {
+	sprintf(msg, "%d Gatherv(root) receiving min=%d,median=%f,max=%d", 
+			llrank,min_recv,median_recv,max_recv);
+	strcat(longmsg, msg);
 
-   sprintf(msg,"%d ",displs[i]);
-   strcat(longmsg,msg);
+	sprintf(msg, ", sending %d", sendcnts);
 
-  }
+	
+if (np != np2){
+		sprintf(msg, " sendtype %d, recvtype %d",np,np2);
+	}
+	else{
+		sprintf(msg, " type %d", np);
+	}
+	strcat (longmsg,msg);
 
-
-  if(np>0 || np2>0) {
-	  sprintf(msg,"%d %d\n",np,np2);
-  }
-  else sprintf(msg,"\n");
-  strcat(longmsg,msg);
-
+	if (err == 0){//MPI_SUCCESS
+	sprintf(msg, " on comm %s\n", nam_comm);
+	}
+	else{
+		sprintf(msg, "\n");
+	}	
+	strcat (longmsg,msg);
   bcount=bcount+2;
 
   returnVal = PMPI_Allgatherv( sendbuf, sendcnts, sendtype, recvbuf,
                                recvcnts, displs, recvtype, comm );
 #ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
-
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -746,18 +518,14 @@ MPI_Comm comm;
   int np;
   char nam[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+  	papi_get_start_measurement();
 #endif
   MPI_Type_get_name(datatype,nam,&np);
   np=encode_datatype((const char*)&nam);
 
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -765,12 +533,8 @@ MPI_Comm comm;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
-  strcat(longmsg,msg);
+ 	papi_print_compute(msg, llrank);
+	strcat(longmsg,msg);
 #endif
 	int size;
 	MPI_Type_size(datatype, &size); 
@@ -803,10 +567,7 @@ MPI_Comm comm;
   else sprintf(msg,"\n");
   strcat(longmsg,msg);
 #ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
-
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -835,9 +596,7 @@ MPI_Comm comm;
     Trace the beginning and ending of MPI_Alltoallv.
 */
 #ifdef PAPI
- if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   MPI_Type_get_name(sendtype,nam,&np);
   np=encode_datatype((const char*)&nam);
@@ -846,9 +605,7 @@ MPI_Comm comm;
 
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -856,10 +613,7 @@ MPI_Comm comm;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+ 	papi_print_compute(msg, llrank);
 
   strcat(longmsg,msg);
 #endif
@@ -901,10 +655,7 @@ MPI_Comm comm;
   returnVal = PMPI_Alltoallv( sendbuf, sendcnts, sdispls, sendtype, recvbuf, 
 			      recvcnts, rdispls, recvtype, comm );
 #ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
-
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -916,10 +667,7 @@ MPI_Comm comm;
   int llrank;
   char msg[100];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-  ins2=values[0];
+  	papi_get_start_measurement();
 #endif
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
   if (bcount>buff )
@@ -929,12 +677,7 @@ MPI_Comm comm;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
-
+ 	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
   sprintf(msg,"%d barrier\n",llrank);
@@ -944,9 +687,7 @@ MPI_Comm comm;
   
   returnVal = PMPI_Barrier( comm );
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -966,9 +707,7 @@ MPI_Comm comm;
   MPI_Type_get_name(datatype,nam,&np);
   np=encode_datatype((const char*)&nam);
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-  ins2=values[0];
+	papi_get_start_measurement();
 #endif
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
   if (bcount>buff )
@@ -979,8 +718,7 @@ MPI_Comm comm;
   }
   msg[0]='\0';
 #ifdef PAPI
-  if(en_time==1) sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  else  sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
   sprintf(msg, "%d comm_size %d\n",llrank,global);
@@ -993,9 +731,7 @@ MPI_Comm comm;
   bcount=bcount+3;
   returnVal = PMPI_Bcast( buffer, count, datatype, root, comm );
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1015,10 +751,7 @@ MPI_Comm comm;
   int np;
   char nam[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-  ins2=values[0];
+	papi_get_start_measurement();
 #endif
   MPI_Type_get_name(datatype,nam,&np);
   np=encode_datatype((const char*)&nam);
@@ -1032,10 +765,7 @@ MPI_Comm comm;
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+ 	papi_print_compute(msg, llrank);
 #endif
   sprintf(msg, "%d comm_size %d\n",llrank,global);
 #ifdef PAPI
@@ -1070,25 +800,17 @@ int * rank;
 {
   int   returnVal;
   int llrank;
-  char msg[100];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 #ifdef PAPI
-  ins2=values[0];
-  if(en_time==1) {
-	 sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+ 	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
   returnVal = PMPI_Comm_rank( comm, rank );
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1099,27 +821,18 @@ int * size;
 {
   int   returnVal;
   int llrank;
-  char msg[100];
 #ifdef PAPI
- if(en_time==1) end_time=PAPI_get_real_usec();
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 #ifdef PAPI
-  ins2=values[0];
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
+  	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
   returnVal = PMPI_Comm_size( comm, size );
   global=*size;
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1303,13 +1016,11 @@ MPI_Request * request;
 {
   int  returnVal;
   int  llrank;
-  char msg[100];
   int np;
   char nam[MPI_MAX_OBJECT_NAME];
   MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-  if(en_time==1) end_time=PAPI_get_real_usec();
+	papi_get_start_measurement();
 #endif
   np=encode_datatype((const char*)&nam);
 
@@ -1321,25 +1032,17 @@ MPI_Request * request;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
-  strcat(longmsg,msg);
+ 	papi_print_compute(msg, llrank);
+	strcat(longmsg,msg);
 #endif
   bcount=bcount+2;
   glob_size=count;
   glob_np=np;
 
   returnVal = PMPI_Irecv( buf, count, datatype, source, tag, comm, request );
+    i_mode=1;
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-#endif
-  i_mode=1;
-#ifdef PAPI
-  if(en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1359,17 +1062,13 @@ MPI_Request * request;
   int np;
   char nam[MPI_MAX_OBJECT_NAME];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   MPI_Type_get_name(datatype,nam,&np);
   np=encode_datatype((const char*)&nam);
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
    {
        fprintf(fp, "%s", longmsg);
@@ -1377,11 +1076,7 @@ MPI_Request * request;
         bcount=0;
    }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
+ 	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
 	int size;
@@ -1393,9 +1088,7 @@ MPI_Request * request;
 
   returnVal = PMPI_Isend( buf, count, datatype, dest, tag, comm, request );
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1416,9 +1109,7 @@ MPI_Status * status;
   char nam[MPI_MAX_OBJECT_NAME];
   MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   np=encode_datatype((const char*)&nam);
 
@@ -1428,9 +1119,7 @@ MPI_Status * status;
       status = &tmp_status;
 #endif
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -1438,12 +1127,8 @@ MPI_Status * status;
    bcount=0;
   }
 #ifdef PAPI
-  if(en_time==1) {
-         sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-  }
-  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
-  strcat(longmsg,msg);
+ 	papi_print_compute(msg, llrank);
+	strcat(longmsg,msg);
 #endif
 	int size;
 	MPI_Type_size(datatype, &size);
@@ -1457,9 +1142,7 @@ MPI_Status * status;
 
  bcount=bcount+2;
 #ifdef PAPI
- PAPI_accum_counters(values, 1);
- ins1=values[0];
- if(en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1479,16 +1162,12 @@ MPI_Comm comm;
   char nam[MPI_MAX_OBJECT_NAME];
   MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
- if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+ 	papi_get_start_measurement();
 #endif
   np=encode_datatype((const char*)&nam);
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );  
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -1500,10 +1179,7 @@ MPI_Comm comm;
  
   if(i_mode==0) {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(msg,"%d compute! %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-	  else sprintf(msg,"%d compute! %lld\n",llrank,values[0]-ins1);
+	papi_print_compute(msg, llrank);
 	strcat(longmsg,msg);
 #endif
 	if(np>0) sprintf(msg, "%d! send %d %d (of %d bytes) %d\n",
@@ -1515,10 +1191,7 @@ MPI_Comm comm;
    }
    else  {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(temp_buff,"%d compute? %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-  	else sprintf(temp_buff,"%d compute? %lld\n",llrank,values[0]-ins1);
+	 	papi_print_compute(temp_buff, llrank);
 	strcat(temp_long,temp_buff);
 #endif
          if(np>0) sprintf(temp_buff, "%d send %d %d (of %d bytes) %d\n",
@@ -1535,9 +1208,7 @@ MPI_Comm comm;
 
   bcount=bcount+2;
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1550,14 +1221,10 @@ MPI_Status * status;
   int llrank;
   char msg[100];
 #ifdef PAPI
-  if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+ 	papi_get_start_measurement();
 #endif
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -1572,9 +1239,7 @@ MPI_Status * status;
     strcat(longmsg,temp_long);
   }
 #ifdef PAPI
-  if(en_time==1) sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-
-  else  sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+ 	papi_print_compute(msg, llrank);
   strcat(longmsg,msg);
 #endif
   sprintf(msg,"%d wait\n",llrank);
@@ -1584,9 +1249,7 @@ MPI_Status * status;
 
   bcount=bcount+3;
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+  	papi_get_end_measurement();
 #endif
   return returnVal;
 }
@@ -1602,9 +1265,7 @@ MPI_Comm *newcomm;
 	int returnVal;
 	char msg[100];
 #ifdef PAPI
-  	if(en_time==1) end_time=PAPI_get_real_usec();
-  	if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-	ins2 = values[0];
+	papi_get_start_measurement();
 #endif
 	if (bcount>buff ){
 		fprintf(fp, "%s", longmsg);
@@ -1618,9 +1279,7 @@ MPI_Comm *newcomm;
 
 	bcount = bcount + 1;
 #ifdef PAPI
-	PAPI_accum_counters(values,1);
-	ins1 = values[0];
-	if (en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
 	return returnVal;
 }
@@ -1631,9 +1290,7 @@ MPI_Comm *comm;
 	int returnVal;
 	char msg[100];
 #ifdef PAPI
-  	if(en_time==1) end_time=PAPI_get_real_usec();
-  	if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-	ins2 = values[0];
+	papi_get_start_measurement();
 #endif
 	if (bcount>buff ){
 		fprintf(fp, "%s", longmsg);
@@ -1647,9 +1304,7 @@ MPI_Comm *comm;
 
 	bcount = bcount + 1;
 #ifdef PAPI
-	PAPI_accum_counters(values,1);
-	ins1 = values[0];
-	if (en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
 	return returnVal;
 
@@ -1663,9 +1318,7 @@ MPI_Comm *newcomm;
 	int returnVal;
 	char msg[100];
 #ifdef PAPI
-  	if(en_time==1) end_time=PAPI_get_real_usec();
-  	if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-	ins2 = values[0];
+ 	papi_get_start_measurement();
 #endif
 	if (bcount>buff ){
 		fprintf(fp, "%s", longmsg);
@@ -1679,9 +1332,7 @@ MPI_Comm *newcomm;
 
 	bcount = bcount + 1;
 #ifdef PAPI
-	PAPI_accum_counters(values,1);
-	ins1 = values[0];
-	if (en_time==1) start_time=PAPI_get_real_usec();
+		papi_get_end_measurement();
 #endif
 	return returnVal;
 
@@ -1694,9 +1345,7 @@ MPI_Datatype *newtype;{
   	char nam[MPI_MAX_OBJECT_NAME];
 	int np;
 #ifdef PAPI	
-  	if(en_time==1) end_time=PAPI_get_real_usec();
-  	if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-	ins2 = values[0];
+ 	papi_get_start_measurement();
 #endif
 	returnVal = PMPI_Type_contiguous(count, oldtype, newtype);
 
@@ -1706,13 +1355,13 @@ MPI_Datatype *newtype;{
 	if (encode_datatype((const char*) &nam) <=100) {
 		
 		printf("inside if, sending %s\n",nam);
-		MPI_Type_get_name(*newtype,nam,&np);
-		insert_contig(nam);
+		//MPI_Type_get_name(*newtype,nam,&np);
+		const char *temp = create_new_name();
+		MPI_Type_set_name(*newtype, temp);
+		insert_contig((char*)temp);
 	}
 #ifdef PAPI	
-	PAPI_accum_counters(values,1);
-	ins1 = values[0];
-	if (en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
 	return returnVal;
 
@@ -1732,16 +1381,12 @@ MPI_Comm comm;{
   char nam[MPI_MAX_OBJECT_NAME];
   MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
- if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   np=encode_datatype((const char*)&nam);
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );  
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -1753,11 +1398,7 @@ MPI_Comm comm;{
  
   if(i_mode==0) {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-	  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
+	 	papi_print_compute(msg, llrank);
 	strcat(longmsg,msg);
 #endif
 	if(np>0) sprintf(msg, "%d Rsend %d %d (of %d bytes) %d\n",
@@ -1769,11 +1410,7 @@ MPI_Comm comm;{
    }
    else  {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(temp_buff,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-  	else sprintf(temp_buff,"%d compute %lld\n",llrank,values[0]-ins1);
-
+	papi_print_compute(temp_buff, llrank);
 	strcat(temp_long,temp_buff);
 #endif
          if(np>0) sprintf(temp_buff, "%d Rsend %d %d (of %d bytes) %d\n",
@@ -1790,9 +1427,7 @@ MPI_Comm comm;{
 
   bcount=bcount+2;
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
   return returnVal;
 
@@ -1812,16 +1447,12 @@ MPI_Comm comm;{
   char nam[MPI_MAX_OBJECT_NAME];
   MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
- if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	papi_get_start_measurement();
 #endif
   np=encode_datatype((const char*)&nam);
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );  
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -1833,11 +1464,7 @@ MPI_Comm comm;{
  
   if(i_mode==0) {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-	  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
+	papi_print_compute(msg, llrank);
 	strcat(longmsg,msg);
 #endif
 	if(np>0) sprintf(msg, "%d Bsend %d %d (of %d bytes) %d\n",
@@ -1849,11 +1476,7 @@ MPI_Comm comm;{
    }
    else  {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(temp_buff,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-  	else sprintf(temp_buff,"%d compute %lld\n",llrank,values[0]-ins1);
-
+	 	papi_print_compute(temp_buff, llrank);
 	strcat(temp_long,temp_buff);
 #endif
          if(np>0) sprintf(temp_buff, "%d Bsend %d %d (of %d bytes) %d\n",
@@ -1870,9 +1493,7 @@ MPI_Comm comm;{
 
   bcount=bcount+2;
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+ 	papi_get_end_measurement();
 #endif
   return returnVal;
 
@@ -1892,16 +1513,12 @@ MPI_Comm comm;{
   char nam[MPI_MAX_OBJECT_NAME];
   MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
- if(en_time==1) end_time=PAPI_get_real_usec();
-
-  if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+ 	papi_get_start_measurement();
 #endif
   np=encode_datatype((const char*)&nam);
 
   PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );  
-#ifdef PAPI
-  ins2=values[0];
-#endif
+
   if (bcount>buff )
   {
    fprintf(fp, "%s", longmsg);
@@ -1913,11 +1530,7 @@ MPI_Comm comm;{
  
   if(i_mode==0) {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-	  else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
-
+	papi_print_compute(msg, llrank);
 	strcat(longmsg,msg);
 #endif
 	if(np>0) sprintf(msg, "%d Ssend %d %d (of %d bytes) %d\n",
@@ -1929,11 +1542,7 @@ MPI_Comm comm;{
    }
    else  {
 #ifdef PAPI
-	  if(en_time==1) {
-         	sprintf(temp_buff,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
-          }
-  	else sprintf(temp_buff,"%d compute %lld\n",llrank,values[0]-ins1);
-
+	papi_print_compute(temp_buff, llrank);
 	strcat(temp_long,temp_buff);
 #endif
          if(np>0) sprintf(temp_buff, "%d Ssend %d %d (of %d bytes) %d\n",
@@ -1950,9 +1559,7 @@ MPI_Comm comm;{
 
   bcount=bcount+2;
 #ifdef PAPI
-  PAPI_accum_counters(values, 1);
-  ins1=values[0];
-  if(en_time==1) start_time=PAPI_get_real_usec();
+	papi_get_end_measurement();
 #endif
   return returnVal;
 
@@ -1965,9 +1572,7 @@ MPI_Status *status;{
 	int returnVal;
 	char msg[100];
 #ifdef PAPI
-  	if(en_time==1) end_time=PAPI_get_real_usec();
-  	if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
-	ins2 = values[0];
+ 	papi_get_start_measurement();
 #endif
 	if (bcount>buff ){
 		fprintf(fp, "%s", longmsg);
@@ -1981,13 +1586,75 @@ MPI_Status *status;{
 	
 	bcount = bcount + 1;
 #ifdef PAPI
-	PAPI_accum_counters(values,1);
-	ins1 = values[0];
-	if (en_time==1) start_time=PAPI_get_real_usec();
+		papi_get_end_measurement();
 #endif
 	return returnVal;
 
 
 }
-//!!!!!!!!!!!!!!!!!!!!!!!MY ADDITIONS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//
 
+void mini_annotate_phase_start(){
+
+	char msg[100];
+#ifdef PAPI
+ 	papi_get_start_measurement();
+#endif
+
+	if (bcount>buff ){
+		fprintf(fp, "%s", longmsg);
+		longmsg[0]='\0';
+		bcount=0;
+	}
+  
+	sprintf(msg, "Phase start.\n");
+	strcat(longmsg, msg);
+  
+	bcount=bcount+2;
+#ifdef PAPI
+	papi_get_end_measurement();
+#endif
+}
+
+void mini_annotate_phase_end(){
+
+	char msg[100];
+#ifdef PAPI
+ 	papi_get_start_measurement();
+#endif
+
+	if (bcount>buff ){
+		fprintf(fp, "%s", longmsg);
+		longmsg[0]='\0';
+		bcount=0;
+	}
+  
+	sprintf(msg, "Phase end.\n");
+	strcat(longmsg, msg);
+  
+	bcount=bcount+2;
+#ifdef PAPI
+	papi_get_end_measurement();
+#endif
+}
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!PAPI FUNCTIONS!!!!!!!!!!!!!!!!!!!!!!!!!!!
+void papi_get_start_measurement(){
+	if(en_time==1) end_time=PAPI_get_real_usec();
+	if(PAPI_accum_counters(values, 1)!=PAPI_OK) printf("This PAPI event is not supported\n");
+	ins2 = values[0];
+}
+
+void papi_get_end_measurement(){
+	if(en_time==1) start_time=PAPI_get_real_usec();
+	PAPI_accum_counters(values, 1);
+	ins1=values[0];
+}
+
+void papi_print_compute(char msg[], int llrank){
+	if(en_time==1) {
+		sprintf(msg,"%d compute %lld %.6f\n",llrank,values[0]-ins1,(double)(end_time-start_time)/1000000);
+	}
+	else sprintf(msg,"%d compute %lld\n",llrank,values[0]-ins1);
+}
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+//!!!!!!!!!!!!!!!!!!!!!!!MY ADDITIONS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//
