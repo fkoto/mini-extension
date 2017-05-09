@@ -8,13 +8,31 @@ typedef struct contig{
 contiguous *start;
 contiguous *end = NULL;
 
+typedef struct comm{
+	char name[100];
+	struct comm *next;
+}communicator;
+
+communicator *start_comm;
+communicator *end_comm = NULL;
+
 int name_counter = 0;
-const char* create_new_name(){
+const char* create_new_contig_name(){
 	char *res = (char*) malloc(17*sizeof(char));
 	
 	snprintf(res, 17, "mini_internal_%d", name_counter);
 	
 	name_counter++;
+	return (const char*) res;
+}
+
+int comm_name_counter = 0;
+const char* create_new_comm_name(int color){
+	char *res = (char*) malloc(16*sizeof(char));
+	
+	snprintf(res, 16, "mini_comm_%d_%d", comm_name_counter, color);
+	
+	comm_name_counter++;
 	return (const char*) res;
 }
 
@@ -56,6 +74,75 @@ int find_contig(char *name){
 		temp = temp->next;
 	}
 	return 0;
+}
+
+void insert_comm(char *name){
+	communicator *temp = (communicator*) malloc(sizeof(communicator));
+	strcpy(temp->name, name);
+	temp->next = NULL;
+	if (end_comm == NULL){
+		start_comm = temp;
+		end_comm = temp;
+	}
+	else{
+		end_comm->next = temp;
+		end_comm = temp;
+	}
+}
+
+void delete_comm(char *name){
+	communicator *temp= start_comm;
+	
+	if (strcmp(temp->name, name) == 0){//delete head
+		start_comm = start_comm->next;
+		free(temp);
+		return;
+	}
+	
+	while (temp->next != NULL){
+		if (strcmp(temp->next->name, name) == 0){
+			communicator *temp2 = temp->next;
+			temp->next = temp2->next;
+			free(temp2);
+			return;
+		}
+		temp = temp->next;
+	}
+}
+
+void delete_comm_list(){
+	communicator *temp = start_comm;
+	communicator *temp2;
+
+	while(temp != NULL){
+		temp2 = temp;
+		temp = temp->next;
+		free(temp2);
+	}
+}
+
+int find_comm(char *name){
+	communicator *temp = start_comm;
+
+	while(temp != NULL){
+		if (strcmp(temp->name, name) == 0){
+			return 1;
+		}
+		temp = temp->next;
+	}
+	return 0;
+}
+
+void update_name(char *oldname, char *newname){
+	communicator *temp = start_comm;
+	
+	while (temp != NULL){
+		if (strcmp(temp->name, oldname) == 0){
+			break;
+		}
+		temp = temp->next;
+	}
+	strcpy(temp->name, newname);
 }
 
 void merge(int *arr, int l1, int h1, int l2, int h2){
