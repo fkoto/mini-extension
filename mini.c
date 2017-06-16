@@ -995,6 +995,7 @@ char *** argv;
 	int  returnVal;
 	int llrank;
 	char file[50];
+	printf("MINI STARTING!!!!!!!!!\n");
 	returnVal = PMPI_Init( argc, argv );
 #ifdef PAPI
 	int event_code;
@@ -1404,6 +1405,7 @@ MPI_Status * status;
 
 
 //!!!!!!!!!!!!!!!!!!!!!!!MY ADDITIONS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//
+
 int MPI_Comm_split(comm, color, key, newcomm)
 MPI_Comm comm;
 int color;
@@ -1421,9 +1423,7 @@ MPI_Comm *newcomm;
 		longmsg[0]='\0';
 		bcount=0;
 	}
-
 	returnVal = PMPI_Comm_split(comm, color, key, newcomm);
-	
 	if (color == MPI_UNDEFINED){
 		sprintf(msg, "Comm split invoked by process but with color=MPI_UNDEFINED\n");
 		strcat(longmsg, msg);
@@ -1432,17 +1432,19 @@ MPI_Comm *newcomm;
 	else{
 		sprintf(msg, "Comm Split. color=%d, key=%d.",color, key);	
 		strcat(longmsg,msg);
-		
-		const char *temp = create_new_comm_name(color);
-		MPI_Comm_set_name(*newcomm, temp);
+		char *temp = (char*) malloc(16*sizeof(char));
+		create_new_comm_name(color, temp);
+
+		MPI_Comm_set_name(*newcomm, (const char*)temp);
 		MPI_Comm_size(*newcomm, &size);
 		
-		insert_comm((char*) temp);
-
-		sprintf("New comm %s of size %d\n", (char*) temp, size);
+		insert_comm( temp);
+		
+		sprintf(msg, "New comm %s of size %d\n", temp, size);
 		strcat(longmsg, msg);
 		
 		bcount = bcount + 2;
+		free(temp);
 	}
 #ifdef PAPI
 	papi_get_end_measurement();
@@ -1795,7 +1797,7 @@ MPI_Status *status;{
 
 }
 
-void mini_annotate_phase_start(){
+void mini_annotate_phase_start(char *name){
 
 	char msg[100];
 #ifdef PAPI
@@ -1808,7 +1810,7 @@ void mini_annotate_phase_start(){
 		bcount=0;
 	}
 
-	sprintf(msg, "Phase start.\n");
+	sprintf(msg, "Phase %s start.\n", name);
 	strcat(longmsg, msg);
 
 	bcount=bcount+2;
@@ -1817,7 +1819,7 @@ void mini_annotate_phase_start(){
 #endif
 }
 
-void mini_annotate_phase_end(){
+void mini_annotate_phase_end(char *name){
 
 	char msg[100];
 #ifdef PAPI
@@ -1830,7 +1832,7 @@ void mini_annotate_phase_end(){
 		bcount=0;
 	}
 
-	sprintf(msg, "Phase end.\n");
+	sprintf(msg, "Phase %s end.\n", name);
 	strcat(longmsg, msg);
 
 	bcount=bcount+2;

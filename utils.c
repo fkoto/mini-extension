@@ -27,13 +27,11 @@ const char* create_new_contig_name(){
 }
 
 int comm_name_counter = 0;
-const char* create_new_comm_name(int color){
-	char *res = (char*) malloc(16*sizeof(char));
-	
-	snprintf(res, 16, "mini_comm_%d_%d", comm_name_counter, color);
+void create_new_comm_name(int color, char *name){
+	snprintf(name, 16, "mini_comm_%d_%d", comm_name_counter, color);
 	
 	comm_name_counter++;
-	return (const char*) res;
+	return;
 }
 
 void insert_contig(char *name){
@@ -48,7 +46,7 @@ void insert_contig(char *name){
 		end->next = temp;
 		end = temp;
 	}
-//	printf("Inserted contig with name %s\n", name);
+	//	printf("Inserted contig with name %s\n", name);
 }
 
 void delete_contig_list(){
@@ -64,10 +62,10 @@ void delete_contig_list(){
 
 int find_contig(char *name){
 	contiguous *temp = start;
-//	printf("Searching for contig %s\n",name);
+	//	printf("Searching for contig %s\n",name);
 
 	while(temp != NULL){
-//		printf("Comparing with %s\n", temp->name);
+		//		printf("Comparing with %s\n", temp->name);
 		if (strcmp(temp->name, name) == 0){
 			return 1;
 		}
@@ -133,7 +131,7 @@ int find_comm(char *name){
 	return 0;
 }
 
-void update_name(char *oldname, char *newname){
+void update_comm_name(char *oldname, char *newname){
 	communicator *temp = start_comm;
 	
 	while (temp != NULL){
