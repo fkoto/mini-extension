@@ -161,9 +161,9 @@ MPI_Comm comm;
 	int size;
 	MPI_Type_size(datatype, &size);
 #ifdef PAPI
-	sprintf(msg, "%d allReduce %d %lld %d (%d bytes)",llrank,count,ins1-ins2,np, size);
+	sprintf(msg, "%d allReduce %d %lld %d ( %d bytes)",llrank,count,ins1-ins2,np, size);
 #else
-	sprintf(msg, "%d allReduce %d  %d (%d bytes)",llrank,count,np, size);
+	sprintf(msg, "%d allReduce %d  %d ( %d bytes)",llrank,count,np, size);
 #endif
 	strcat(longmsg, msg);
 	
@@ -797,8 +797,9 @@ MPI_Comm comm;
 	int   returnVal=0;
 	int llrank;
 	char msg[100];
-	int np;
+	int np, resultlen;
 	char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
 	MPI_Type_get_name(datatype,nam,&np);
 	np=encode_datatype((const char*)&nam);
 #ifdef PAPI
@@ -816,13 +817,20 @@ MPI_Comm comm;
 	papi_print_compute(msg, llrank);
 	strcat(longmsg,msg);
 #endif
-	sprintf(msg, "%d comm_size %d\n",llrank,global);//??????????????
-	strcat(longmsg,msg);	
+	//sprintf(msg, "%d comm_size %d\n",llrank,global);//??????????????
+	//strcat(longmsg,msg);	
 	int size;
 	MPI_Type_size(datatype, &size);
-	if(root>0 || np>0) sprintf(msg, "%d bcast %d (of %d bytes) %d %d\n",llrank,count,size,root,np);
-	else sprintf(msg, "%d bcast %d (of %d bytes)\n",llrank,count,size);
+	if(root>0 || np>0) sprintf(msg, "%d bcast %d (of %d bytes) %d %d ",llrank,count,size,root,np);
+	else sprintf(msg, "%d bcast %d (of %d bytes) ",llrank,count,size);
 	strcat(longmsg,msg);
+
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	sprintf(msg, "on comm %s\n", nam_comm);
+	strcat(longmsg, msg);
+
+
+
 	bcount=bcount+3;
 
 #ifdef WITH_MPI
@@ -1430,7 +1438,7 @@ MPI_Comm *newcomm;
 		bcount = bcount + 1;
 	}
 	else{
-		sprintf(msg, "Comm Split. color=%d, key=%d.",color, key);	
+		sprintf(msg, "Comm split. color=%d, key=%d.",color, key);	
 		strcat(longmsg,msg);
 		char *temp = (char*) malloc(16*sizeof(char));
 		create_new_comm_name(color, temp);
