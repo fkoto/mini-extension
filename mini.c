@@ -1213,13 +1213,8 @@ MPI_Request * request;
 	sprintf(msg, "%d Isend %d %d (of %d bytes) %d",llrank,dest,count,size,np);
 	strcat(longmsg,msg);
 
-	//TODO to be changed with name comm!!!
-	if (compare_comms(comm, MPI_COMM_WORLD)){
-		sprintf(msg, "\n");
-	}
-	else{
-		sprintf(msg, "(not on world)\n");
-	}
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg,msg);
 
 	bcount = bcount + 2;
@@ -1590,14 +1585,10 @@ MPI_Comm comm;{
 #endif
 		sprintf(msg, "%d Rsend %d %d (of %d bytes) %d", llrank,dest,count,size,np);
 		strcat(longmsg,msg);
-		//TODO to be changed with name comm!!!
-		if (compare_comms(comm, MPI_COMM_WORLD)){
-			sprintf(msg, "\n");
-		}
-		else{
-			sprintf(msg, "(not on world)\n");
-		}
-		strcat(longmsg, msg);
+
+		MPI_Comm_get_name(comm, nam_comm, &resultlen);
+		sprintf(msg, " on comm %s\n", nam_comm);
+		strcat(longmsg,msg);
 	}
 	else  {
 #ifdef PAPI
@@ -1605,15 +1596,12 @@ MPI_Comm comm;{
 		strcat(temp_long,temp_buff);
 #endif
 		sprintf(temp_buff, "%d Rsend %d %d (of %d bytes) %d", llrank,dest,count,size,np);
-		strcat(longmsg,msg);
+		strcat(temp_long, temp_buff);
 
-		if (compare_comms(comm, MPI_COMM_WORLD)){
-			sprintf(temp_buff, "\n");
-		}
-		else{
-			sprintf(temp_buff, "(not on world)\n");
-		}
+		MPI_Comm_get_name(comm, nam_comm, &resultlen);
+		sprintf(temp_buff, " on comm %s\n", nam_comm);
 		strcat(temp_long,temp_buff);
+
 		temp_buff[0]='\0';
 	}
 
@@ -1665,13 +1653,9 @@ MPI_Comm comm;{
 #endif
 		sprintf(msg, "%d Bsend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
 		strcat(longmsg,msg);
-		//TODO to be changed with name comm
-		if (compare_comms(comm, MPI_COMM_WORLD)){
-			sprintf(msg, "\n");
-		}
-		else{
-			sprintf(msg, "(not on world)\n");
-		}
+
+		MPI_Comm_get_name(comm, nam_comm, &resultlen);
+		sprintf(msg, " on comm %s\n", nam_comm);
 		strcat(longmsg,msg);
 	}
 	else  {
@@ -1681,13 +1665,10 @@ MPI_Comm comm;{
 #endif
 		sprintf(temp_buff, "%d Bsend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
 		strcat(temp_long,temp_buff);
-		if (compare_comms(comm, MPI_COMM_WORLD)){
-			sprintf(temp_buff, "\n");
-		}
-		else{
-			sprintf(temp_buff, "(not on world)\n");
-		}
+		MPI_Comm_get_name(comm, nam_comm, &resultlen);
+		sprintf(temp_buff, " on comm %s\n", nam_comm);
 		strcat(temp_long,temp_buff);
+
 		temp_buff[0]='\0';
 	}
 
@@ -1739,13 +1720,9 @@ MPI_Comm comm;{
 #endif
 		sprintf(msg, "%d Ssend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
 		strcat(longmsg,msg);
-		//TODO to be changed with name comm
-		if (compare_comms(comm, MPI_COMM_WORLD)){
-			sprintf(msg, "\n");
-		}
-		else{
-			sprintf(msg, "(not on world)\n");
-		}
+
+		MPI_Comm_get_name(comm, nam_comm, &resultlen);
+		sprintf(msg, " on comm %s\n", nam_comm);
 		strcat(longmsg,msg);
 	}
 	else  {
@@ -1755,13 +1732,11 @@ MPI_Comm comm;{
 #endif
 		sprintf(temp_buff, "%d Ssend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
 		strcat(temp_long,temp_buff);
-		if (compare_comms(comm, MPI_COMM_WORLD)){
-			sprintf(temp_buff, "\n");
-		}
-		else{
-			sprintf(temp_buff, "(not on world)\n");
-		}
+
+		MPI_Comm_get_name(comm, nam_comm, &resultlen);
+		sprintf(temp_buff, " on comm %s\n", nam_comm);
 		strcat(temp_long,temp_buff);
+
 		temp_buff[0]='\0';
 	}
 
