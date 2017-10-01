@@ -1189,6 +1189,9 @@ MPI_Request * request;
 	char msg[100];
 	int np;
 	char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
+
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -1562,6 +1565,9 @@ MPI_Comm comm;{
 	int np;
 	char nam[MPI_MAX_OBJECT_NAME];
 	MPI_Type_get_name(datatype,nam,&np);
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
+
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -1630,6 +1636,9 @@ MPI_Comm comm;{
 	int np;
 	char nam[MPI_MAX_OBJECT_NAME];
 	MPI_Type_get_name(datatype,nam,&np);
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
+
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -1696,6 +1705,9 @@ MPI_Comm comm;{
 	char msg[100],temp_buff[100];
 	int np;
 	char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
+
 	MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
 	papi_get_start_measurement();
