@@ -9,6 +9,7 @@ contiguous *start;
 contiguous *end = NULL;
 
 typedef struct comm{
+	int cnt;
 	char name[100];
 	struct comm *next;
 }communicator;
@@ -77,6 +78,7 @@ int find_contig(char *name){
 void insert_comm(char *name){
 	communicator *temp = (communicator*) malloc(sizeof(communicator));
 	strcpy(temp->name, name);
+	temp->cnt = 1;//!!!!!NOT 0 in order to be aligned with parser!!!!!
 	temp->next = NULL;
 	if (end_comm == NULL){
 		start_comm = temp;
@@ -129,6 +131,20 @@ int find_comm(char *name){
 		temp = temp->next;
 	}
 	return 0;
+}
+
+int get_comm_cnt_and_incr(char *name){
+	communicator *temp = start_comm;
+
+	while(temp != NULL){
+		if (strcmp(temp->name, name) == 0){
+			int x = temp->cnt;
+			temp->cnt = temp->cnt + 1;
+			return x;
+		}
+		temp = temp->next;
+	}
+	return -1;
 }
 
 void update_comm_name(char *oldname, char *newname){

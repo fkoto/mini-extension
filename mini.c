@@ -117,6 +117,7 @@ MPI_Comm comm;
 	char nam[MPI_MAX_OBJECT_NAME];
 	char nam_comm[MPI_MAX_OBJECT_NAME];
 	int resultlen;
+	int comm_id;
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -170,7 +171,8 @@ MPI_Comm comm;
 //	print_op(op);
 
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, ", on comm %s\n", nam_comm);
+	comm_id = get_comm_cnt_and_incr(nam_comm);
+	sprintf(msg, ", on comm %s %d\n", nam_comm, comm_id);
 	strcat(longmsg, msg);
 
 	bcount=bcount+2;
@@ -993,6 +995,7 @@ int  MPI_Finalize(  )
 	returnVal = PMPI_Finalize(  );
 	//deallocating resources
 	delete_contig_list();
+	delete_comm_list();
 	return returnVal;
 }
 
@@ -1042,6 +1045,9 @@ char *** argv;
 	ins1=values[0];
 	t1=values[0];
 #endif
+	//init comm list
+	insert_comm("MPI_COMM_WORLD");
+
 	return returnVal;
 }
 
