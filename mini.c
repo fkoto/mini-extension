@@ -235,8 +235,8 @@ MPI_Comm comm;
 	MPI_Type_size(sendtype, &ssize);
 	MPI_Type_size(recvtype, &rsize);
 
-	sprintf(msg, "%d gather %d (of %d bytes) %d (%d bytes) %d",
-	llrank,sendcount, ssize, recvcnt, rsize, root);
+	sprintf(msg, "%d gather %d (of %d bytes) %d",
+	llrank,sendcount, ssize, root);
 	strcat(longmsg,msg);
 
 	if (np == np2){
@@ -387,7 +387,7 @@ MPI_Comm comm;
 	int rsize;
 	MPI_Type_size(recvtype, &rsize);
 
-	sprintf(msg, "%d gatherv min=%d,median=%f,max=%d (of %d bytes) %d", 
+	sprintf(msg, "%d gatherv min=%d median=%f max=%d (of %d bytes) %d", 
 	llrank,min_recv,median_recv,max_recv, rsize, root);
 
 	strcat(longmsg,msg);
