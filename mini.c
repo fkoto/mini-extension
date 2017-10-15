@@ -162,20 +162,23 @@ MPI_Comm comm;
 	int size;
 	MPI_Type_size(datatype, &size);
 #ifdef PAPI
-	sprintf(msg, "%d allReduce %d %lld %d ( %d bytes)",llrank,count,ins1-ins2,np, size);
+	sprintf(msg, "%d allReduce %d %lld %d (of %d bytes)",llrank,count,ins1-ins2,np, size);
 #else
-	sprintf(msg, "%d allReduce %d  %d ( %d bytes)",llrank,count,np, size);
+	sprintf(msg, "%d allReduce %d (of %d bytes)",llrank,count, size);
 #endif
 	strcat(longmsg, msg);
 	
 //	print_op(op);
 
-	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	comm_id = get_comm_cnt_and_incr(nam_comm);
-	sprintf(msg, ", on comm %s %d\n", nam_comm, comm_id);
+	sprintf(msg, " of type %d", np);
 	strcat(longmsg, msg);
 
-	bcount=bcount+2;
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	comm_id = get_comm_cnt_and_incr(nam_comm);
+	sprintf(msg, " on comm %s %d\n", nam_comm, comm_id);
+	strcat(longmsg, msg);
+
+	bcount=bcount+3;
 
 #ifdef PAPI
 	papi_get_end_measurement();
@@ -198,6 +201,8 @@ MPI_Comm comm;
 	int np,np2;
 	char msg[300];
 	char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
 
 #ifdef PAPI
 	papi_get_start_measurement();
@@ -235,19 +240,15 @@ MPI_Comm comm;
 	strcat(longmsg,msg);
 
 	if (np == np2){
-		sprintf(msg, "of type %d", np);
+		sprintf(msg, " of type %d", np);
 	}
 	else{
-		sprintf(msg, "of types %d, %d", np, np2);
+		sprintf(msg, " of types %d, %d", np, np2);
 	}
 	strcat(longmsg,msg);
 	
-	if (compare_comms(comm, MPI_COMM_WORLD)){
-		sprintf(msg, "\n");
-	}
-	else{
-		sprintf(msg, "(not on world)\n");
-	}
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg,msg);
 
 #ifdef WITH_MPI
@@ -277,6 +278,8 @@ MPI_Comm comm;
 	int np,np2;
 	char msg[300];
 	char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -306,8 +309,8 @@ MPI_Comm comm;
 	MPI_Type_size(sendtype, &ssize);
 	MPI_Type_size(recvtype, &rsize);
 
-	sprintf(msg, "%d allToAll %d (of %d bytes) %d (of %d bytes)",
-	llrank,sendcount, ssize, recvcnt, rsize);
+	sprintf(msg, "%d allToAll %d (of %d bytes)",
+	llrank,sendcount, ssize);
 	strcat(longmsg,msg);
 
 	if (np == np2){
@@ -317,13 +320,9 @@ MPI_Comm comm;
 		sprintf(msg, "of types %d, %d", np, np2);
 	}
 	strcat(longmsg,msg);
-
-	if (compare_comms(comm, MPI_COMM_WORLD)){
-		sprintf(msg, "\n");
-	}
-	else{
-		sprintf(msg, "(not on world)\n");
-	}  
+	
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg,msg);
 
 	bcount = bcount + 3;
@@ -385,26 +384,24 @@ MPI_Comm comm;
 	min_recv = min((int*)recvcnts, size);
 	median_recv = median((int*)recvcnts, size);
 
-	if (llrank == root){
-		sprintf(msg, "%d Gatherv(root) receiving min=%d,median=%f,max=%d", 
-		llrank,min_recv,median_recv,max_recv);
-	}
-	else{
-		sprintf(msg, "%d Gatherv sending %d",
-		llrank,sendcnts);
-	}
+	int rsize;
+	MPI_Type_size(recvtype, &rsize);
+
+	sprintf(msg, "%d gatherv min=%d,median=%f,max=%d (of %d bytes) %d", 
+	llrank,min_recv,median_recv,max_recv, rsize, root);
+
 	strcat(longmsg,msg);
 
 	if (np != np2){
-		sprintf(msg, " sendtype %d, recvtype %d",np,np2);
+		sprintf(msg, " of types %d, %d",np,np2);
 	}
 	else{
-		sprintf(msg, " type %d", np);
+		sprintf(msg, " of type %d", np);
 	}
 	strcat (longmsg,msg);
 
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, "on comm %s\n", nam_comm);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg,msg);
 
 	bcount = bcount + 4;
@@ -435,6 +432,8 @@ MPI_Comm comm;
 	//int i;//unused
 	int np,np2;
 	char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -464,20 +463,16 @@ MPI_Comm comm;
 	strcat(longmsg,msg);
 
 	if (np == np2){
-		sprintf(msg, "of type %d", np);
+		sprintf(msg, " of type %d", np);
 	}
 	else {
-		sprintf(msg, "of types %d, %d", np, np2);
+		sprintf(msg, " of types %d, %d", np, np2);
 	}
 	strcat(longmsg,msg);
 	
-	//TODO to be changed with comm get name!!!!
-	if (compare_comms(comm, MPI_COMM_WORLD)){
-		sprintf(msg, "\n");
-	}
-	else{
-		sprintf(msg, "(not on world)\n");
-	}
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	int comm_id = get_comm_cnt_and_incr(nam_comm);
+	sprintf(msg, " on comm %s %d\n", nam_comm, comm_id);
 	strcat(longmsg,msg);
 
 	bcount=bcount+3;
@@ -540,23 +535,21 @@ MPI_Comm comm;
 	min_recv = min((int*)recvcnts, size);
 	median_recv = median((int*)recvcnts, size);
 
-	sprintf(msg, "%d Gatherv receiving min=%d,median=%f,max=%d", 
+	sprintf(msg, "%d gatherv min=%d median=%f max=%d", 
 	llrank,min_recv,median_recv,max_recv);
 	strcat(longmsg, msg);
 
-	sprintf(msg, ", sending %d", sendcnts);
-
 	
 	if (np != np2){
-		sprintf(msg, " sendtype %d, recvtype %d",np,np2);
+		sprintf(msg, " of types %d %d",np,np2);
 	}
 	else{
-		sprintf(msg, " type %d", np);
+		sprintf(msg, " of type %d", np);
 	}
 	strcat (longmsg,msg);
 
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, "on comm %s\n",nam_comm);
+	sprintf(msg, " on comm %s\n",nam_comm);
 	strcat (longmsg,msg);
 	
 	bcount=bcount + 4;
@@ -572,7 +565,6 @@ MPI_Comm comm;
 	return returnVal;
 }
 
-//////!!!!!!!!!!!!!!!!!!CHANGE OF OUTPUT!!!!!!!!!!!!!!!///////////////////
 int   MPI_Reduce_scatter( sendbuf, recvbuf, recvcnts, datatype, op, comm )
 const void * sendbuf;
 void * recvbuf;
@@ -670,7 +662,7 @@ MPI_Comm comm;
 	int llrank;
 	char msg[300];
 	//int i,max_send=0,max_send_displ=0,max_recv=0,max_recv_displ=0,s_buffer=0,r_buffer=0;//unused
-	int smin, smax, rmin, rmax, size;
+	int smin, smax, rmin, rmax, size, ssize;
 	float smedian, rmedian;
 	int np,np2;
 	char nam[MPI_MAX_OBJECT_NAME];
@@ -688,6 +680,8 @@ MPI_Comm comm;
 	np=encode_datatype((const char*)&nam);
 	MPI_Type_get_name(recvtype,nam,&np2);
 	np2=encode_datatype((const char*)&nam);
+
+	MPI_Type_size(sendtype, &ssize); 
 
 	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 
@@ -712,22 +706,23 @@ MPI_Comm comm;
 	rmin = min((int*)recvcnts, size);
 	rmedian = median((int*)recvcnts, size);
 
-	sprintf(msg, "%d Alltoallv sending min=%d,median=%f,max=%d", llrank, smin, smedian, smax);
+	sprintf(msg, "%d Alltoallv min=%d median=%f max=%d (of %d bytes)", llrank, smin, smedian, smax, ssize);
 	strcat(longmsg, msg);
 	
-	sprintf(msg, ", receiving min=%d,median=%f,max=%d", rmin, rmedian, rmax);
-	strcat(longmsg, msg);
+	//sprintf(msg, ", receiving min=%d,median=%f,max=%d", rmin, rmedian, rmax);
+	//strcat(longmsg, msg);
 
 	if (np == np2){
-		sprintf(msg, ", of type %d", np);
+		sprintf(msg, " of type %d", np);
 	}
 	else{
-		sprintf(msg, ", of types %d, %d", np, np2);
+		sprintf(msg, " of types %d, %d", np, np2);
 	}
 	strcat(longmsg, msg);
-
+	
+	int comm_id = get_comm_cnt_and_incr(nam_comm);
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, "on comm %s", nam_comm);
+	sprintf(msg, " on comm %s %d\n", nam_comm, comm_id);
 	strcat(longmsg, msg);
 
 
@@ -750,6 +745,9 @@ MPI_Comm comm;
 	int   returnVal=0;
 	int llrank;
 	char msg[100];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
+
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -766,14 +764,9 @@ MPI_Comm comm;
 #endif
 	sprintf(msg,"%d barrier",llrank);
 	strcat(longmsg,msg);
-	
-	//TODO to be changed with mpi comm name!!!
-	if (compare_comms(comm, MPI_COMM_WORLD)){
-		sprintf(msg, "\n");
-	}
-	else{
-		sprintf(msg, "(not on world)\n");
-	}
+
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg,msg);
 
 	bcount = bcount + 2;
@@ -788,7 +781,6 @@ MPI_Comm comm;
 	return returnVal;
 }
 
-///////!!!!!!!!!!!!!CHANGE OF OUTPUT!!!!!!///////////
 int   MPI_Bcast( buffer, count, datatype, root, comm )
 void * buffer;
 int count;
@@ -823,17 +815,17 @@ MPI_Comm comm;
 	//strcat(longmsg,msg);	
 	int size;
 	MPI_Type_size(datatype, &size);
-	if(root>0 || np>0) sprintf(msg, "%d bcast %d (of %d bytes) %d %d ",llrank,count,size,root,np);
-	else sprintf(msg, "%d bcast %d (of %d bytes) ",llrank,count,size);
+	
+	sprintf(msg, "%d bcast %d (of %d bytes) %d of type %d",llrank,count,size,root,np);
 	strcat(longmsg,msg);
 
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, "on comm %s\n", nam_comm);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg, msg);
 
 
 
-	bcount=bcount+3;
+	bcount=bcount+2;
 
 #ifdef WITH_MPI
 	returnVal = PMPI_Bcast( buffer, count, datatype, root, comm );
@@ -897,17 +889,17 @@ MPI_Comm comm;
 #ifdef PAPI
 	sprintf(msg, "%d reduce %d (of %d bytes) %lld",llrank,count,size,ins1-ins2);
 #else
-	sprintf(msg, "%d reduce %d (of %d bytes)",llrank,count,size);
+	sprintf(msg, "%d reduce %d (of %d bytes) %d",llrank,count,size, root);
 #endif
 	strcat(longmsg, msg);
 	
-	sprintf(msg, ", type %d, root %d",np, root);
+	sprintf(msg, " of type %d",np);
 	strcat(longmsg, msg);
 	
 //	print_op(op);
 	
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, "on comm %s\n", nam_comm);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg, msg);
 
 
@@ -1394,7 +1386,7 @@ MPI_Status * status;
 #endif
 
 	if(i_mode==1) {
-		if(glob_np>0) sprintf(msg,"%d Irecv %d %d %d\n",llrank,status->MPI_SOURCE,glob_size,glob_np);//!!!!!!!!!!!
+		if(glob_np>0) sprintf(msg,"%d Irecv %d %d %d\n",llrank,status->MPI_SOURCE,glob_size,glob_np);
 		else sprintf(msg,"%d Irecv %d %d\n",llrank,status->MPI_SOURCE,glob_size);
 		strcat(longmsg,msg);
 		strcat(longmsg,temp_long);
