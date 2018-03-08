@@ -544,7 +544,7 @@ MPI_Comm comm;
 	llrank,min_recv,median_recv,max_recv);
 	strcat(longmsg, msg);
 
-	sprintf(msg, "(of %d bytes)", ssize);
+	sprintf(msg, " (of %d bytes)", ssize);
 	strcat(longmsg, msg);
 
 	
