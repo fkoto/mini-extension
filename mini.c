@@ -535,13 +535,21 @@ MPI_Comm comm;
 	min_recv = min((int*)recvcnts, size);
 	median_recv = median((int*)recvcnts, size);
 
-	sprintf(msg, "%d gatherv min=%d median=%f max=%d", 
+	int ssize, rsize;
+	MPI_Type_size(sendtype, &ssize);
+	MPI_Type_size(recvtype, &rsize);
+
+
+	sprintf(msg, "%d allgatherv min=%d median=%f max=%d", 
 	llrank,min_recv,median_recv,max_recv);
+	strcat(longmsg, msg);
+
+	sprintf(msg, "(of %d bytes)", ssize);
 	strcat(longmsg, msg);
 
 	
 	if (np != np2){
-		sprintf(msg, " of types %d %d",np,np2);
+		sprintf(msg, " of types %d, %d",np,np2);
 	}
 	else{
 		sprintf(msg, " of type %d", np);
@@ -549,7 +557,8 @@ MPI_Comm comm;
 	strcat (longmsg,msg);
 
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, " on comm %s\n",nam_comm);
+	int comm_id = get_comm_cnt_and_incr(nam_comm);
+	sprintf(msg, " on comm %s %d\n",nam_comm, comm_id);
 	strcat (longmsg,msg);
 	
 	bcount=bcount + 4;
