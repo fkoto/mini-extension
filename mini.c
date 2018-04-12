@@ -51,7 +51,7 @@ long long ins1, ins2,t1,t2;
 #ifdef PAPI
 int EventSet=PAPI_NULL;
 #endif
-int Events[30],i_mode=0,en_time=0;
+int Events[30],i_mode=0,en_time=0,i_counter=0;
 int num_hwcntrs=0,bcount=0,imod=0,glob_size=0,glob_np=0,buff=250;
 long long values[1],start_time,end_time,elapsed_time;
 char longmsg[120000],temp_buf[100],temp_long[1000];
@@ -1176,6 +1176,7 @@ MPI_Request * request;
 #endif
 
 	i_mode=1;
+	i_counter++;
 #ifdef PAPI
 	papi_get_end_measurement();
 #endif
@@ -1398,7 +1399,10 @@ MPI_Status * status;
 		if(glob_np>0) sprintf(msg,"%d Irecv %d %d %d\n",llrank,status->MPI_SOURCE,glob_size,glob_np);
 		else sprintf(msg,"%d Irecv %d %d\n",llrank,status->MPI_SOURCE,glob_size);
 		strcat(longmsg,msg);
-		strcat(longmsg,temp_long);
+		i_counter--;
+		if (i_counter==0){
+			strcat(longmsg,temp_long);
+		}
 	}
 #ifdef PAPI
 	papi_print_compute(msg, llrank);
@@ -1406,8 +1410,10 @@ MPI_Status * status;
 #endif
 	sprintf(msg,"%d wait\n",llrank);
 	strcat(longmsg,msg);
-	i_mode=0;
-	temp_long[0]='\0';
+	if(i_counter==0){
+		i_mode=0;
+		temp_long[0]='\0';
+	}
 
 	bcount=bcount+3;
 #ifdef PAPI
@@ -1418,6 +1424,62 @@ MPI_Status * status;
 
 
 //!!!!!!!!!!!!!!!!!!!!!!!MY ADDITIONS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//
+int   MPI_Waitall( count, array_of_requests, array_of_statuses )
+int count;
+MPI_Request array_of_requests[];
+MPI_Status *array_of_statuses;
+{
+	int i;
+	int   returnVal=0;
+	int llrank;
+	char msg[100];
+#ifdef PAPI
+	papi_get_start_measurement();
+#endif
+	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
+
+	if (bcount>buff )
+	{
+		fprintf(fp, "%s", longmsg);
+		longmsg[0]='\0';
+		bcount=0;
+	}
+
+#ifdef WITH_MPI
+	returnVal = PMPI_Waitall( count, array_of_requests, array_of_statuses );
+#endif
+
+	if(i_mode==1) {
+		for (i=0;i<count;i++){
+			if (llrank != array_of_statuses[i].MPI_SOURCE){//not an Isend
+				if(glob_np>0) sprintf(msg,"%d Irecv %d %d %d\n",llrank,array_of_statuses[i].MPI_SOURCE,glob_size,glob_np);
+				else sprintf(msg,"%d Irecv %d %d\n",llrank,array_of_statuses[i].MPI_SOURCE,glob_size);
+				strcat(longmsg,msg);
+				i_counter--;
+			}
+		}
+		if (i_counter==0){
+			strcat(longmsg,temp_long);
+		}
+	}	
+#ifdef PAPI
+	papi_print_compute(msg, llrank);
+	strcat(longmsg,msg);
+#endif
+	sprintf(msg,"%d waitall\n",llrank);
+	strcat(longmsg,msg);
+	if (i_counter==0){
+		i_mode=0;
+		temp_long[0]='\0';
+	}
+
+		bcount=bcount+ count + 1;
+#ifdef PAPI
+	papi_get_end_measurement();
+#endif
+	return returnVal;
+
+}
 
 int MPI_Comm_split(comm, color, key, newcomm)
 MPI_Comm comm;
