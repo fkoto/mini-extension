@@ -314,15 +314,16 @@ MPI_Comm comm;
 	strcat(longmsg,msg);
 
 	if (np == np2){
-		sprintf(msg, "of type %d", np);
+		sprintf(msg, " of type %d", np);
 	}
 	else{
-		sprintf(msg, "of types %d, %d", np, np2);
+		sprintf(msg, " of types %d, %d", np, np2);
 	}
 	strcat(longmsg,msg);
 	
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, " on comm %s\n", nam_comm);
+	int comm_id = get_comm_cnt_and_incr(nam_comm);
+	sprintf(msg, " on comm %s %d\n", nam_comm, comm_id);
 	strcat(longmsg,msg);
 
 	bcount = bcount + 3;
@@ -458,8 +459,7 @@ MPI_Comm comm;
 	int ssize, rsize;
 	MPI_Type_size(sendtype, &ssize);
 	MPI_Type_size(recvtype, &rsize);
-	sprintf(msg, "%d allGather %d (of %d bytes) %d (of %d bytes)",
-	llrank,sendcnts, ssize, recvcnts, rsize);
+	sprintf(msg, "%d allGather %d (of %d bytes)", llrank,sendcnts, ssize);
 	strcat(longmsg,msg);
 
 	if (np == np2){
@@ -469,6 +469,9 @@ MPI_Comm comm;
 		sprintf(msg, " of types %d, %d", np, np2);
 	}
 	strcat(longmsg,msg);
+
+	sprintf(msg, " %d (of %d bytes)", recvcnts, rsize); 
+	strcat(longmsg, msg);//receive traces
 	
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
 	int comm_id = get_comm_cnt_and_incr(nam_comm);
@@ -715,7 +718,7 @@ MPI_Comm comm;
 	rmin = min((int*)recvcnts, size);
 	rmedian = median((int*)recvcnts, size);
 
-	sprintf(msg, "%d Alltoallv min=%d median=%f max=%d (of %d bytes)", llrank, smin, smedian, smax, ssize);
+	sprintf(msg, "%d alltoAllv min=%d median=%f max=%d (of %d bytes)", llrank, smin, smedian, smax, ssize);
 	strcat(longmsg, msg);
 	
 	//sprintf(msg, ", receiving min=%d,median=%f,max=%d", rmin, rmedian, rmax);
@@ -820,8 +823,7 @@ MPI_Comm comm;
 	papi_print_compute(msg, llrank);
 	strcat(longmsg,msg);
 #endif
-	//sprintf(msg, "%d comm_size %d\n",llrank,global);//??????????????
-	//strcat(longmsg,msg);	
+		
 	int size;
 	MPI_Type_size(datatype, &size);
 	
@@ -997,6 +999,11 @@ int  MPI_Finalize(  )
 	//deallocating resources
 	delete_contig_list();
 	delete_comm_list();
+
+	if (llrank == 0){
+		printf("MINI ENDING!\n");
+	}
+
 	return returnVal;
 }
 
@@ -1007,7 +1014,7 @@ char *** argv;
 	int  returnVal;
 	int llrank;
 	char file[50];
-	printf("MINI STARTING!!!!!!!!!\n");
+	
 	returnVal = PMPI_Init( argc, argv );
 #ifdef PAPI
 	int event_code;
@@ -1028,6 +1035,9 @@ char *** argv;
 
 
 	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
+	if (llrank == 0){
+		printf("MINI STARTING!\n");
+	}
 
 	if (stat("$PWD/ti_traces", &st) == -1) {
 		mkdir("$PWD/ti_traces", 0700);
@@ -1429,7 +1439,7 @@ int count;
 MPI_Request array_of_requests[];
 MPI_Status *array_of_statuses;
 {
-	int i;
+	int i,bcounter=0;
 	int   returnVal=0;
 	int llrank;
 	char msg[100];
@@ -1456,6 +1466,7 @@ MPI_Status *array_of_statuses;
 				else sprintf(msg,"%d Irecv %d %d\n",llrank,array_of_statuses[i].MPI_SOURCE,glob_size);
 				strcat(longmsg,msg);
 				i_counter--;
+				bcounter++;
 			}
 		}
 		if (i_counter==0){
@@ -1473,7 +1484,7 @@ MPI_Status *array_of_statuses;
 		temp_long[0]='\0';
 	}
 
-		bcount=bcount+ count + 1;
+		bcount=bcount+ bcounter + 1;
 #ifdef PAPI
 	papi_get_end_measurement();
 #endif
