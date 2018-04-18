@@ -588,11 +588,12 @@ MPI_Comm comm;
 	int   returnVal=0;
 	int llrank;
 	char msg[300];
-	int i;
 	int np;
 	char nam[MPI_MAX_OBJECT_NAME];
 	char nam_comm[MPI_MAX_OBJECT_NAME];
 	int resultlen;
+	int csize,rmin,rmax;
+	float rmedian;
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -601,6 +602,13 @@ MPI_Comm comm;
 
 
 	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
+
+
+	csize = sizeof(recvcnts)/sizeof(recvcnts[0]);
+	rmax = max((int*)recvcnts, csize);
+	rmin = min((int*)recvcnts, csize);
+	rmedian = median((int*)recvcnts, csize);
+
 
 	if (bcount>buff )
 	{
@@ -614,15 +622,14 @@ MPI_Comm comm;
 #endif
 	int size;
 	MPI_Type_size(datatype, &size); 
-	sprintf(msg, "(size %d bytes): %d reduceScatter ",
-	size, llrank );
 
+	sprintf(msg, "%d reduceScatter min=%d, median=%f, max=%d (of %d bytes) %d", llrank, rmin, rmedian, rmax, size, np);
+	strcat(longmsg,msg); 
+
+	
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	sprintf(msg, " on comm %s\n", nam_comm);
 	strcat(longmsg,msg);
-
-	for (i=0;i<global;i++) {
-		sprintf(msg,"%d ",recvcnts[i]);
-		strcat(longmsg,msg);
-	} 
 
 	bcount=bcount+2;
 #ifdef PAPI
@@ -641,18 +648,7 @@ MPI_Comm comm;
 
 	sprintf(msg,"%lld ",ins1-ins2);
 	strcat(longmsg,msg);
-#endif
-	
-	sprintf(msg, ", of type %d", np);
-	strcat(longmsg, msg);
-	
-//	print_op(op);
-	
-	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, "on comm %s\n", nam_comm);
-	
-	strcat(longmsg,msg);
-#ifdef PAPI
+
 	papi_get_end_measurement();
 #endif
 	return returnVal;
