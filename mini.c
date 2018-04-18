@@ -1740,7 +1740,7 @@ MPI_Comm comm;{
 		papi_print_compute(msg, llrank);
 		strcat(longmsg,msg);
 #endif
-		sprintf(msg, "%d Bsend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
+		sprintf(msg, "%d Bsend %d %d (of %d bytes) %d", llrank,dest,count,size,np);
 		strcat(longmsg,msg);
 
 		MPI_Comm_get_name(comm, nam_comm, &resultlen);
@@ -1752,7 +1752,7 @@ MPI_Comm comm;{
 		papi_print_compute(temp_buff, llrank);
 		strcat(temp_long,temp_buff);
 #endif
-		sprintf(temp_buff, "%d Bsend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
+		sprintf(temp_buff, "%d Bsend %d %d (of %d bytes) %d", llrank,dest,count,size,np);
 		strcat(temp_long,temp_buff);
 		MPI_Comm_get_name(comm, nam_comm, &resultlen);
 		sprintf(temp_buff, " on comm %s\n", nam_comm);
@@ -1770,6 +1770,79 @@ MPI_Comm comm;{
 	papi_get_end_measurement();
 #endif
 	return returnVal;
+
+}
+
+int MPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount, recvtype, source, recvtag, comm, status)
+const void *sendbuf;
+int sendcount;
+MPI_Datatype sendtype;
+int dest;
+int sendtag;
+void *recvbuf;
+int recvcount;
+MPI_Datatype recvtype;
+int source;
+int recvtag;
+MPI_Comm comm;
+MPI_Status *status;{
+	int  returnVal=0;
+	int  llrank;
+	char msg[100];
+	int np, np2;
+	char nam[MPI_MAX_OBJECT_NAME];
+	char nam2[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
+
+	MPI_Type_get_name(sendtype,nam,&np);
+	MPI_Type_get_name(recvtype,nam2,&np2);
+#ifdef PAPI
+	papi_get_start_measurement();
+#endif
+	np=encode_datatype((const char*)&nam);
+	np2=encode_datatype((const char*)&nam2);
+
+	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );  
+
+	if (bcount>buff )
+	{
+		fprintf(fp, "%s", longmsg);
+		longmsg[0]='\0';
+		bcount=0;
+	}
+	int ssize,rsize;
+	MPI_Type_size(sendtype, &ssize);
+	MPI_Type_size(recvtype, &rsize);
+
+#ifdef PAPI
+		papi_print_compute(msg, llrank);
+		strcat(longmsg,msg);
+#endif
+
+	sprintf(msg, "%d Sendrecv(s) %d %d (of %d bytes) %d", llrank,dest,sendcount,ssize,np);
+	strcat(longmsg,msg);
+
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	sprintf(msg, " on comm %s\n", nam_comm);
+	strcat(longmsg,msg);
+
+	sprintf(msg, "%d Sendrecv(r) %d %d (of %d bytes) %d", llrank,source,recvcount,rsize,np2);
+	strcat(longmsg,msg);
+
+	sprintf(msg, " on comm %s\n", nam_comm);
+	strcat(longmsg,msg);
+
+#ifdef WITH_MPI
+	returnVal = PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount, recvtype, source, recvtag, comm, status);
+#endif
+
+	bcount=bcount+2;
+#ifdef PAPI
+	papi_get_end_measurement();
+#endif
+	return returnVal;
+
 
 }
 
@@ -1810,7 +1883,7 @@ MPI_Comm comm;{
 		papi_print_compute(msg, llrank);
 		strcat(longmsg,msg);
 #endif
-		sprintf(msg, "%d Ssend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
+		sprintf(msg, "%d Ssend %d %d (of %d bytes) %d", llrank,dest,count,size,np);
 		strcat(longmsg,msg);
 
 		MPI_Comm_get_name(comm, nam_comm, &resultlen);
@@ -1822,7 +1895,7 @@ MPI_Comm comm;{
 		papi_print_compute(temp_buff, llrank);
 		strcat(temp_long,temp_buff);
 #endif
-		sprintf(temp_buff, "%d Ssend %d %d (of %d bytes) %d\n", llrank,dest,count,size,np);
+		sprintf(temp_buff, "%d Ssend %d %d (of %d bytes) %d", llrank,dest,count,size,np);
 		strcat(temp_long,temp_buff);
 
 		MPI_Comm_get_name(comm, nam_comm, &resultlen);
