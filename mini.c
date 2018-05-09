@@ -623,13 +623,13 @@ MPI_Comm comm;
 	int size;
 	MPI_Type_size(datatype, &size); 
 
-	sprintf(msg, "%d reduceScatter min=%d, median=%f, max=%d (of %d bytes) %d", llrank, rmin, rmedian, rmax, size, np);
+	sprintf(msg, "%d reduceScatter min=%d median=%f max=%d (of %d bytes) of type %d", llrank, rmin, rmedian, rmax, size, np);
 	strcat(longmsg,msg); 
-
 	
+	int comm_id = get_comm_cnt_and_incr(nam_comm);
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, " on comm %s\n", nam_comm);
-	strcat(longmsg,msg);
+	sprintf(msg, " on comm %s %d\n", nam_comm, comm_id);
+	strcat(longmsg, msg);
 
 	bcount=bcount+2;
 #ifdef PAPI
