@@ -626,8 +626,8 @@ MPI_Comm comm;
 	sprintf(msg, "%d reduceScatter min=%d median=%f max=%d (of %d bytes) of type %d", llrank, rmin, rmedian, rmax, size, np);
 	strcat(longmsg,msg); 
 	
-	int comm_id = get_comm_cnt_and_incr(nam_comm);
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	int comm_id = get_comm_cnt_and_incr(nam_comm);
 	sprintf(msg, " on comm %s %d\n", nam_comm, comm_id);
 	strcat(longmsg, msg);
 
@@ -728,8 +728,8 @@ MPI_Comm comm;
 	}
 	strcat(longmsg, msg);
 	
-	int comm_id = get_comm_cnt_and_incr(nam_comm);
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+	int comm_id = get_comm_cnt_and_incr(nam_comm);
 	sprintf(msg, " on comm %s %d\n", nam_comm, comm_id);
 	strcat(longmsg, msg);
 
