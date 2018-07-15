@@ -1494,12 +1494,16 @@ int color;
 int key;
 MPI_Comm *newcomm;
 {
+	int llrank;
 	int returnVal;
 	char msg[100];
 	int size;
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
+
+	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
+
 	if (bcount>buff ){
 		fprintf(fp, "%s", longmsg);
 		longmsg[0]='\0';
@@ -1512,7 +1516,7 @@ MPI_Comm *newcomm;
 		bcount = bcount + 1;
 	}
 	else{
-		sprintf(msg, "Comm split. color=%d, key=%d.",color, key);	
+		sprintf(msg, "%d Comm split. color=%d, key=%d.", llrank, color, key);	
 		strcat(longmsg,msg);
 		char *temp = (char*) malloc(16*sizeof(char));
 		create_new_comm_name(color, temp);
