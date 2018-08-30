@@ -10,6 +10,7 @@ contiguous *end = NULL;
 
 typedef struct comm{
 	int cnt;
+	int local_rank;
 	char name[100];
 	struct comm *next;
 }communicator;
@@ -75,10 +76,11 @@ int find_contig(char *name){
 	return 0;
 }
 
-void insert_comm(char *name){
+void insert_comm(char *name, int local_rank){
 	communicator *temp = (communicator*) malloc(sizeof(communicator));
 	strcpy(temp->name, name);
 	temp->cnt = 1;//!!!!!NOT 0 in order to be aligned with parser!!!!!
+	temp->local_rank = local_rank;
 	temp->next = NULL;
 	if (end_comm == NULL){
 		start_comm = temp;
@@ -131,6 +133,22 @@ int find_comm(char *name){
 		temp = temp->next;
 	}
 	return 0;
+}
+
+/*
+ * This returns the local rank of the calling process in 
+ * this communicator. If not found it returns a negative number.
+*/
+int find_comm_rank(char *name){
+	communicator *temp = start_comm;
+
+	while(temp != NULL){
+		if (strcmp(temp->name, name) == 0){
+			return temp->local_rank;
+		}
+		temp = temp->next;
+	}
+	return -1;
 }
 
 int get_comm_cnt_and_incr(char *name){

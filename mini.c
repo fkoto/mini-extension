@@ -197,7 +197,7 @@ int root;
 MPI_Comm comm;
 {
 	int  returnVal=0;
-	int llrank;
+	int llrank, local;
 	int np,np2;
 	char msg[300];
 	char nam[MPI_MAX_OBJECT_NAME];
@@ -248,8 +248,14 @@ MPI_Comm comm;
 	strcat(longmsg,msg);
 	
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, " on comm %s\n", nam_comm);
-	strcat(longmsg,msg);
+	if (comm == MPI_COMM_WORLD){
+		sprintf(msg, " on comm %s\n", nam_comm);
+		strcat(longmsg, msg);
+	}else{
+		local = find_comm_rank(nam_comm);
+		sprintf(msg, " on comm %s %d\n", nam_comm, local);
+		strcat(longmsg, msg);
+	}
 
 #ifdef WITH_MPI
 	returnVal = PMPI_Gather( sendbuf, sendcount, sendtype, recvbuf, recvcnt,
@@ -351,7 +357,7 @@ int root;
 MPI_Comm comm;
 {
 	int   returnVal=0;
-	int llrank;
+	int llrank, local;
 	char msg[300];
 	int max_recv=0,min_recv=0, size;//,i,s_buffer=0; //unused
 	float median_recv = 0.0;
@@ -402,8 +408,14 @@ MPI_Comm comm;
 	strcat (longmsg,msg);
 
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, " on comm %s\n", nam_comm);
-	strcat(longmsg,msg);
+	if (comm == MPI_COMM_WORLD){
+		sprintf(msg, " on comm %s\n", nam_comm);
+		strcat(longmsg, msg);
+	}else{
+		local = find_comm_rank(nam_comm);
+		sprintf(msg, " on comm %s %d\n", nam_comm, local);
+		strcat(longmsg, msg);
+	}
 
 	bcount = bcount + 4;
 
@@ -797,7 +809,7 @@ int root;
 MPI_Comm comm;
 {
 	int   returnVal=0;
-	int llrank;
+	int llrank, local;
 	char msg[100];
 	int np, resultlen;
 	char nam[MPI_MAX_OBJECT_NAME];
@@ -827,9 +839,14 @@ MPI_Comm comm;
 	strcat(longmsg,msg);
 
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, " on comm %s\n", nam_comm);
-	strcat(longmsg, msg);
-
+	if (comm == MPI_COMM_WORLD){
+		sprintf(msg, " on comm %s\n", nam_comm);
+		strcat(longmsg, msg);
+	}else{
+		local = find_comm_rank(nam_comm);
+		sprintf(msg, " on comm %s %d\n", nam_comm, local);
+		strcat(longmsg, msg);
+	}
 
 
 	bcount=bcount+2;
@@ -854,7 +871,7 @@ int root;
 MPI_Comm comm;
 {
 	int   returnVal=0;
-	int llrank;
+	int llrank, local;
 	char msg[100];
 	int np;
 	char nam[MPI_MAX_OBJECT_NAME];
@@ -904,10 +921,16 @@ MPI_Comm comm;
 	strcat(longmsg, msg);
 	
 //	print_op(op);
-	
+
 	MPI_Comm_get_name(comm, nam_comm, &resultlen);
-	sprintf(msg, " on comm %s\n", nam_comm);
-	strcat(longmsg, msg);
+	if (comm == MPI_COMM_WORLD){
+		sprintf(msg, " on comm %s\n", nam_comm);
+		strcat(longmsg, msg);
+	}else{
+		local = find_comm_rank(nam_comm);
+		sprintf(msg, " on comm %s %d\n", nam_comm, local);
+		strcat(longmsg, msg);
+	}
 
 
 #ifdef PAPI	//????? needed or get_end_measurement
@@ -1053,7 +1076,7 @@ char *** argv;
 	t1=values[0];
 #endif
 	//init comm list
-	insert_comm("MPI_COMM_WORLD");
+	insert_comm("MPI_COMM_WORLD", llrank);
 
 	return returnVal;
 }
@@ -1494,7 +1517,7 @@ int color;
 int key;
 MPI_Comm *newcomm;
 {
-	int llrank;
+	int llrank, local;
 	int returnVal;
 	char msg[100];
 	int size;
@@ -1524,7 +1547,9 @@ MPI_Comm *newcomm;
 		MPI_Comm_set_name(*newcomm, (const char*)temp);
 		MPI_Comm_size(*newcomm, &size);
 		
-		insert_comm( temp);
+		PMPI_Comm_rank(*newcomm, &local);
+
+		insert_comm(temp, local);
 		
 		sprintf(msg, "New comm %s of size %d\n", temp, size);
 		strcat(longmsg, msg);
