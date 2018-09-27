@@ -18,6 +18,18 @@ typedef struct comm{
 communicator *start_comm;
 communicator *end_comm = NULL;
 
+typedef struct mpi_request_meta{
+	int id;
+	int count;
+	int size;
+	int data_code;
+	char comm_name[100];
+	struct mpi_request_meta *next;
+}mpi_request_metadata;
+
+mpi_request_metadata *start_req;
+mpi_request_metadata *end_req = NULL;
+
 int name_counter = 0;
 const char* create_new_contig_name(){
 	char *res = (char*) malloc(17*sizeof(char));
@@ -176,6 +188,71 @@ void update_comm_name(char *oldname, char *newname){
 	}
 	strcpy(temp->name, newname);
 }
+
+void insert_req(MPI_Request *req, int cnt, int size, int code, char *name){
+	mpi_request_metadata *temp = (mpi_request_metadata*) malloc(sizeof(mpi_request_metadata));
+
+	memcpy(&temp->id, req, sizeof(int));
+
+	temp->count = cnt;
+	temp->size = size;
+	temp->data_code = code;
+	strcpy(temp->comm_name, name);
+	temp->next = NULL;
+	
+	if (end_req == NULL){
+		start_req = temp;
+		end_req = temp;
+	}
+	else{
+		end_req->next = temp;
+		end_req = temp;
+	}
+}
+
+void delete_req(MPI_Request *req){
+	mpi_request_metadata *temp= start_req;
+
+	if (memcmp(&temp->id, req, sizeof(int)) == 0){//delete head
+		start_req = start_req->next;
+		free(temp);
+		return;
+	}
+	
+	while (temp->next != NULL){
+		if (memcmp(&temp->id, req, sizeof(int)) == 0){
+			mpi_request_metadata *temp2 = temp->next;
+			temp->next = temp2->next;
+			free(temp2);
+			return;
+		}
+		temp = temp->next;
+	}
+}
+
+void delete_req_list(){
+	mpi_request_metadata *temp = start_req;
+	mpi_request_metadata *temp2;
+	while(temp != NULL){
+		temp2 = temp;
+		temp = temp->next;
+		free(temp2);
+	}
+}
+
+mpi_request_metadata* find_req(MPI_Request *req){
+	mpi_request_metadata *temp = start_req;
+	
+	while(temp != NULL){
+		if (memcmp(temp, req, sizeof(int)) == 0){
+			return temp;
+		}
+		temp = temp->next;
+	}
+	return NULL;
+}
+
+
 
 void merge(int *arr, int l1, int h1, int l2, int h2){
 	int *temp;

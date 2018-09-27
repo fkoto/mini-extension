@@ -682,8 +682,8 @@ MPI_Comm comm;
 	int llrank;
 	char msg[300];
 	//int i,max_send=0,max_send_displ=0,max_recv=0,max_recv_displ=0,s_buffer=0,r_buffer=0;//unused
-	int smin, smax, rmin, rmax, size, ssize;
-	float smedian, rmedian;
+	int smin, smax, size, ssize;
+	float smedian;
 	int np,np2;
 	char nam[MPI_MAX_OBJECT_NAME];
 	char nam_comm[MPI_MAX_OBJECT_NAME];
@@ -722,15 +722,8 @@ MPI_Comm comm;
 	smin = min((int*)sendcnts, size);
 	smedian = median((int*)sendcnts, size);
 
-	rmax = max((int*)recvcnts, size);
-	rmin = min((int*)recvcnts, size);
-	rmedian = median((int*)recvcnts, size);
-
 	sprintf(msg, "%d alltoAllv min=%d median=%f max=%d (of %d bytes)", llrank, smin, smedian, smax, ssize);
 	strcat(longmsg, msg);
-	
-	//sprintf(msg, ", receiving min=%d,median=%f,max=%d", rmin, rmedian, rmax);
-	//strcat(longmsg, msg);
 
 	if (np == np2){
 		sprintf(msg, " of type %d", np);
@@ -1018,6 +1011,7 @@ int  MPI_Finalize(  )
 	//deallocating resources
 	delete_contig_list();
 	delete_comm_list();
+	delete_req_list();
 
 	if (llrank == 0){
 		printf("MINI ENDING!\n");
@@ -1177,13 +1171,19 @@ MPI_Request * request;
 {
 	int  returnVal=0;
 	int  llrank;
-	int np;
+	int np, size;
 	char nam[MPI_MAX_OBJECT_NAME];
+	char nam_comm[MPI_MAX_OBJECT_NAME];
+	int resultlen;
+	
 	MPI_Type_get_name(datatype,nam,&np);
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
+
 	np=encode_datatype((const char*)&nam);
+
+	PMPI_Type_size(datatype, &size);
 
 	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 	if (bcount>buff )
@@ -1192,6 +1192,9 @@ MPI_Request * request;
 		longmsg[0]='\0';
 		bcount=0;
 	}
+
+	MPI_Comm_get_name(comm, nam_comm, &resultlen);
+
 #ifdef PAPI
 	papi_print_compute(msg, llrank);
 	strcat(longmsg,msg);
@@ -1204,6 +1207,7 @@ MPI_Request * request;
 	returnVal = PMPI_Irecv( buf, count, datatype, source, tag, comm, request );
 #endif
 
+	insert_req(request, count, size, np, nam_comm);
 	i_mode=1;
 	i_counter++;
 #ifdef PAPI
@@ -1228,7 +1232,6 @@ MPI_Request * request;
 	char nam[MPI_MAX_OBJECT_NAME];
 	char nam_comm[MPI_MAX_OBJECT_NAME];
 	int resultlen;
-
 #ifdef PAPI
 	papi_get_start_measurement();
 #endif
@@ -1262,6 +1265,7 @@ MPI_Request * request;
 #ifdef WITH_MPI
 	returnVal = PMPI_Isend( buf, count, datatype, dest, tag, comm, request );
 #endif
+
 
 #ifdef PAPI
 	papi_get_end_measurement();
@@ -1419,14 +1423,23 @@ MPI_Status * status;
 		longmsg[0]='\0';
 		bcount=0;
 	}
-
+	
+	mpi_request_metadata *meta;
+	if (i_mode == 1){
+		meta = find_req(request);
+	}else{
+		meta = NULL;
+	}
 #ifdef WITH_MPI
 	returnVal = PMPI_Wait( request, status );
 #endif
 
 	if(i_mode==1) {
-		if(glob_np>0) sprintf(msg,"%d Irecv %d %d %d\n",llrank,status->MPI_SOURCE,glob_size,glob_np);
-		else sprintf(msg,"%d Irecv %d %d\n",llrank,status->MPI_SOURCE,glob_size);
+		if(meta != NULL){
+			 sprintf(msg,"%d Irecv %d %d (of %d bytes) %d on comm %s\n",llrank,status->MPI_SOURCE, meta->count, meta->size, meta->data_code, meta->comm_name);
+		}else{
+			 sprintf(msg,"%d Irecv %d\n",llrank,status->MPI_SOURCE);
+		}
 		strcat(longmsg,msg);
 		i_counter--;
 		if (i_counter==0){
