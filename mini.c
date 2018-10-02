@@ -1426,7 +1426,7 @@ MPI_Status * status;
 	
 	mpi_request_metadata *meta;
 	if (i_mode == 1){
-		meta = find_req(request);
+		meta = find_and_pop_req(request);
 	}else{
 		meta = NULL;
 	}
@@ -1437,6 +1437,8 @@ MPI_Status * status;
 	if(i_mode==1) {
 		if(meta != NULL){
 			 sprintf(msg,"%d Irecv %d %d (of %d bytes) %d on comm %s\n",llrank,status->MPI_SOURCE, meta->count, meta->size, meta->data_code, meta->comm_name);
+//			delete_req(request);
+			free(meta);
 		}else{
 			 sprintf(msg,"%d Irecv %d\n",llrank,status->MPI_SOURCE);
 		}
@@ -1487,6 +1489,15 @@ MPI_Status *array_of_statuses;
 		bcount=0;
 	}
 
+	mpi_request_metadata *meta;
+	mpi_request_metadata **meta_arr;
+	if (i_mode==1){
+		meta_arr = (mpi_request_metadata**) malloc(count*sizeof(mpi_request_metadata*));
+		for (i=0; i< count;i++){
+			meta_arr[i] = find_req(&array_of_requests[i]);
+		}
+	}
+
 #ifdef WITH_MPI
 	returnVal = PMPI_Waitall( count, array_of_requests, array_of_statuses );
 #endif
@@ -1494,13 +1505,20 @@ MPI_Status *array_of_statuses;
 	if(i_mode==1) {
 		for (i=0;i<count;i++){
 			if (llrank != array_of_statuses[i].MPI_SOURCE){//not an Isend
-				if(glob_np>0) sprintf(msg,"%d Irecv %d %d %d\n",llrank,array_of_statuses[i].MPI_SOURCE,glob_size,glob_np);
-				else sprintf(msg,"%d Irecv %d %d\n",llrank,array_of_statuses[i].MPI_SOURCE,glob_size);
+				meta = meta_arr[i];
+				if(meta != NULL){
+					sprintf(msg,"%d Irecv %d %d (of %d bytes) %d on comm %s\n",llrank,array_of_statuses[i].MPI_SOURCE, meta->count, meta->size, meta->data_code, meta->comm_name);
+					delete_req(&array_of_requests[i]);
+				}else{
+					 sprintf(msg,"%d Irecv %d\n",llrank,array_of_statuses[i].MPI_SOURCE);
+				}
 				strcat(longmsg,msg);
 				i_counter--;
+				
 				bcounter++;
 			}
 		}
+		free(meta_arr);
 		if (i_counter==0){
 			strcat(longmsg,temp_long);
 		}

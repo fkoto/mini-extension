@@ -214,6 +214,7 @@ void delete_req(MPI_Request *req){
 	mpi_request_metadata *temp= start_req;
 
 	if (memcmp(&temp->id, req, sizeof(int)) == 0){//delete head
+		printf("deleting head\n");
 		start_req = start_req->next;
 		free(temp);
 		return;
@@ -221,6 +222,7 @@ void delete_req(MPI_Request *req){
 	
 	while (temp->next != NULL){
 		if (memcmp(&temp->id, req, sizeof(int)) == 0){
+			printf("deleting\n");
 			mpi_request_metadata *temp2 = temp->next;
 			temp->next = temp2->next;
 			free(temp2);
@@ -233,10 +235,12 @@ void delete_req(MPI_Request *req){
 void delete_req_list(){
 	mpi_request_metadata *temp = start_req;
 	mpi_request_metadata *temp2;
+	int cnt = 0;
 	while(temp != NULL){
 		temp2 = temp;
 		temp = temp->next;
 		free(temp2);
+		cnt++;
 	}
 }
 
@@ -248,6 +252,25 @@ mpi_request_metadata* find_req(MPI_Request *req){
 			return temp;
 		}
 		temp = temp->next;
+	}
+	return NULL;
+}
+
+mpi_request_metadata* find_and_pop_req(MPI_Request *req){
+	mpi_request_metadata *temp = start_req;
+
+	if (memcmp(temp, req, sizeof(int)) == 0){//pop head
+		start_req = temp->next;
+		return temp;
+	}
+
+	while(temp != NULL){
+		if (memcmp(temp->next, req, sizeof(int)) == 0){
+			mpi_request_metadata *temp2 = temp->next;
+			temp->next = temp2->next;
+			return temp2;
+		}
+		temp = temp->next; 
 	}
 	return NULL;
 }
