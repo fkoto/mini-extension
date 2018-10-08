@@ -27,7 +27,7 @@ typedef struct mpi_request_meta{
 	struct mpi_request_meta *next;
 }mpi_request_metadata;
 
-mpi_request_metadata *start_req;
+mpi_request_metadata *start_req = NULL;
 mpi_request_metadata *end_req = NULL;
 
 int name_counter = 0;
@@ -214,7 +214,6 @@ void delete_req(MPI_Request *req){
 	mpi_request_metadata *temp= start_req;
 
 	if (memcmp(&temp->id, req, sizeof(int)) == 0){//delete head
-		printf("deleting head\n");
 		start_req = start_req->next;
 		free(temp);
 		return;
@@ -222,7 +221,6 @@ void delete_req(MPI_Request *req){
 	
 	while (temp->next != NULL){
 		if (memcmp(&temp->id, req, sizeof(int)) == 0){
-			printf("deleting\n");
 			mpi_request_metadata *temp2 = temp->next;
 			temp->next = temp2->next;
 			free(temp2);
@@ -259,8 +257,15 @@ mpi_request_metadata* find_req(MPI_Request *req){
 mpi_request_metadata* find_and_pop_req(MPI_Request *req){
 	mpi_request_metadata *temp = start_req;
 
+	if (start_req == NULL){
+		return NULL;
+	}
+
 	if (memcmp(temp, req, sizeof(int)) == 0){//pop head
 		start_req = temp->next;
+		if (start_req == NULL){ //in case the list empties
+			end_req = NULL;
+		}
 		return temp;
 	}
 
