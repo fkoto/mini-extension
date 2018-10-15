@@ -5,6 +5,12 @@
 
 #define WITH_MPI
 
+#ifndef BUFSIZE
+#define BUFSIZE 120000
+#define BUFCNT 250
+#define TMPSIZE 10000
+#endif
+
 #ifdef PAPI
 #include <papi.h>
 #else
@@ -52,9 +58,9 @@ long long ins1, ins2,t1,t2;
 int EventSet=PAPI_NULL;
 #endif
 int Events[30],i_mode=0,en_time=0,i_counter=0;
-int num_hwcntrs=0,bcount=0,imod=0,glob_size=0,glob_np=0,buff=250;
+int num_hwcntrs=0,bcount=0,imod=0,glob_size=0,glob_np=0,buff=BUFCNT;
 long long values[1],start_time,end_time,elapsed_time;
-char longmsg[120000],temp_buf[100],temp_long[1000];
+char longmsg[BUFSIZE],temp_buf[100],temp_long[TMPSIZE];
 char *testt;
 #define TRACE_PRINTF(msg) \
 	if ( (MINI_Trace_hasBeenInit) && (!MINI_Trace_hasBeenFinished) ) {\
@@ -1049,7 +1055,7 @@ char *** argv;
 
 	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
 	if (llrank == 0){
-		printf("MINI STARTING!\n");
+		printf("MINI STARTING!(buffersize=%d, buffercount=%d, tempsize=%d)\n", BUFSIZE, BUFCNT, TMPSIZE);
 	}
 
 	if (stat("$PWD/ti_traces", &st) == -1) {
