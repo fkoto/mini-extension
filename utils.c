@@ -211,11 +211,20 @@ void insert_req(MPI_Request *req, int cnt, int size, int code, char *name){
 }
 
 void delete_req(MPI_Request *req){
+
+	if (start_req == NULL){//empty list
+		return;
+	}
+
 	mpi_request_metadata *temp= start_req;
 
 	if (memcmp(&temp->id, req, sizeof(int)) == 0){//delete head
 		start_req = start_req->next;
 		free(temp);
+		if (start_req == NULL){ //in case the list empties
+			end_req = NULL;
+		}
+
 		return;
 	}
 	

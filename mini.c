@@ -1548,6 +1548,83 @@ MPI_Status *array_of_statuses;
 
 }
 
+int MPI_Waitany(count, array_of_requests, index, status)
+int count;
+MPI_Request array_of_requests[];
+int *index;
+MPI_Status *status;
+{
+	int bcounter=0;
+	int returnVal=0;
+	int llrank;
+	char msg[100];
+#ifdef PAPI
+	papi_get_start_measurement();
+#endif
+	PMPI_Comm_rank( MPI_COMM_WORLD, &llrank );
+
+	if (bcount>buff )
+	{
+		fprintf(fp, "%s", longmsg);
+		longmsg[0]='\0';
+		bcount=0;
+	}
+
+	mpi_request_metadata *meta;
+
+	MPI_Request* array_of_requests_copy;
+	if (i_mode == 1){
+		array_of_requests_copy = (MPI_Request*) malloc(count *sizeof(MPI_Request));
+		memcpy(array_of_requests_copy, array_of_requests, count*sizeof(MPI_Request));
+	}
+
+#ifdef WITH_MPI	
+	returnVal = PMPI_Waitany(count, array_of_requests, index, status);
+#endif
+	if (i_mode == 1 && (llrank != status->MPI_SOURCE)){
+		meta = find_and_pop_req(&array_of_requests_copy[*index]);
+		if (meta != NULL){
+			 sprintf(msg,"%d Irecv %d %d (of %d bytes) %d on comm %s\n",llrank,status->MPI_SOURCE, meta->count, meta->size, meta->data_code, meta->comm_name);
+			free(meta);
+		}else{
+			sprintf(msg,"%d Irecv %d\n",llrank,status->MPI_SOURCE);
+		}
+
+		strcat(longmsg,msg);
+		i_counter--;
+		if (i_counter==0){
+			strcat(longmsg,temp_long);
+		}
+
+	}
+
+	if (i_mode == 1){
+		free(array_of_requests_copy);
+	}
+	
+	if (i_counter==0){
+		strcat(longmsg,temp_long);
+	}	
+#ifdef PAPI
+	papi_print_compute(msg, llrank);
+	strcat(longmsg,msg);
+#endif
+	sprintf(msg,"%d Waitany\n",llrank);
+	strcat(longmsg,msg);
+	if (i_counter==0){
+		i_mode=0;
+		temp_long[0]='\0';
+	}
+
+	bcount=bcount+ bcounter + 1;
+#ifdef PAPI
+	papi_get_end_measurement();
+#endif
+
+	return returnVal;
+}
+
+
 int MPI_Comm_split(comm, color, key, newcomm)
 MPI_Comm comm;
 int color;
